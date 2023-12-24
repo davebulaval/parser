@@ -41,7 +41,7 @@ class Transform(object):
         return f"{self.__class__.__name__}({s})"
 
     def __call__(self, sentences: Iterable[Sentence]) -> Iterable[Sentence]:
-        return [sentence.numericalize(self.flattened_fields) for sentence in progress_bar(sentences)]
+        return [sentence.numericalize(self.flattened_fields) for sentence in sentences]
 
     def __getitem__(self, index):
         return getattr(self, self.fields[index])
