@@ -39,7 +39,7 @@ $ pip install -U supar
 ```
 or from source directly:
 ```sh
-$ pip install -U git+https://github.com/yzhangcs/parser
+$ pip install -U git+https://github.com/davebulaval/parser
 ```
 
 The following requirements should be satisfied:
