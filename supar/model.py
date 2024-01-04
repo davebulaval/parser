@@ -77,7 +77,7 @@ class Model(nn.Module):
             if 'bert' in self.args.feat:
                 self.bert_embed = TransformerEmbedding(name=self.args.bert,
                                                        n_layers=self.args.n_bert_layers,
-                                                       n_out=self.args.n_plm_embed,
+                                                       n_out=self.args.n_feat_embed,
                                                        pooling=self.args.bert_pooling,
                                                        pad_index=self.args.bert_pad_index,
                                                        mix_dropout=self.args.mix_dropout,
