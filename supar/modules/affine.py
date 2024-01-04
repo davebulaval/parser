@@ -49,7 +49,7 @@ class Biaffine(nn.Module):
         bias_x: bool = True,
         bias_y: bool = True,
         decompose: bool = False,
-        init: Callable = nn.init.zeros_
+        init: Callable = nn.init.zeros_,
     ) -> Biaffine:
         super().__init__()
 
@@ -64,13 +64,21 @@ class Biaffine(nn.Module):
         self.init = init
 
         if n_proj is not None:
-            self.mlp_x, self.mlp_y = MLP(n_in, n_proj, dropout), MLP(n_in, n_proj, dropout)
+            self.mlp_x, self.mlp_y = MLP(n_in, n_proj, dropout), MLP(
+                n_in, n_proj, dropout
+            )
         self.n_model = n_proj or n_in
         if not decompose:
-            self.weight = nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x, self.n_model + bias_y))
+            self.weight = nn.Parameter(
+                torch.Tensor(n_out, self.n_model + bias_x, self.n_model + bias_y)
+            )
         else:
-            self.weight = nn.ParameterList((nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x)),
-                                            nn.Parameter(torch.Tensor(n_out, self.n_model + bias_y))))
+            self.weight = nn.ParameterList(
+                (
+                    nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x)),
+                    nn.Parameter(torch.Tensor(n_out, self.n_model + bias_y)),
+                )
+            )
 
         self.reset_parameters()
 
@@ -99,11 +107,7 @@ class Biaffine(nn.Module):
         else:
             self.init(self.weight)
 
-    def forward(
-        self,
-        x: torch.Tensor,
-        y: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             x (torch.Tensor): ``[batch_size, seq_len, n_in]``.
@@ -115,7 +119,7 @@ class Biaffine(nn.Module):
                 If ``n_out=1``, the dimension for ``n_out`` will be squeezed automatically.
         """
 
-        if hasattr(self, 'mlp_x'):
+        if hasattr(self, "mlp_x"):
             x, y = self.mlp_x(x), self.mlp_y(y)
         if self.bias_x:
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
@@ -123,12 +127,12 @@ class Biaffine(nn.Module):
             y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
         # [batch_size, n_out, seq_len, seq_len]
         if self.decompose:
-            wx = torch.einsum('bxi,oi->box', x, self.weight[0])
-            wy = torch.einsum('byj,oj->boy', y, self.weight[1])
-            s = torch.einsum('box,boy->boxy', wx, wy)
+            wx = torch.einsum("bxi,oi->box", x, self.weight[0])
+            wy = torch.einsum("byj,oj->boy", y, self.weight[1])
+            s = torch.einsum("box,boy->boxy", wx, wy)
         else:
-            s = torch.einsum('bxi,oij,byj->boxy', x, self.weight, y)
-        return s.squeeze(1) / self.n_in ** self.scale
+            s = torch.einsum("bxi,oij,byj->boxy", x, self.weight, y)
+        return s.squeeze(1) / self.n_in**self.scale
 
 
 class Triaffine(nn.Module):
@@ -171,7 +175,7 @@ class Triaffine(nn.Module):
         bias_x: bool = False,
         bias_y: bool = False,
         decompose: bool = False,
-        init: Callable = nn.init.zeros_
+        init: Callable = nn.init.zeros_,
     ) -> Triaffine:
         super().__init__()
 
@@ -191,11 +195,19 @@ class Triaffine(nn.Module):
             self.mlp_z = MLP(n_in, n_proj, dropout)
         self.n_model = n_proj or n_in
         if not decompose:
-            self.weight = nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x, self.n_model, self.n_model + bias_y))
+            self.weight = nn.Parameter(
+                torch.Tensor(
+                    n_out, self.n_model + bias_x, self.n_model, self.n_model + bias_y
+                )
+            )
         else:
-            self.weight = nn.ParameterList((nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x)),
-                                            nn.Parameter(torch.Tensor(n_out, self.n_model)),
-                                            nn.Parameter(torch.Tensor(n_out, self.n_model + bias_y))))
+            self.weight = nn.ParameterList(
+                (
+                    nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x)),
+                    nn.Parameter(torch.Tensor(n_out, self.n_model)),
+                    nn.Parameter(torch.Tensor(n_out, self.n_model + bias_y)),
+                )
+            )
 
         self.reset_parameters()
 
@@ -225,10 +237,7 @@ class Triaffine(nn.Module):
             self.init(self.weight)
 
     def forward(
-        self,
-        x: torch.Tensor,
-        y: torch.Tensor,
-        z: torch.Tensor
+        self, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor
     ) -> torch.Tensor:
         r"""
         Args:
@@ -242,7 +251,7 @@ class Triaffine(nn.Module):
                 If ``n_out=1``, the dimension for ``n_out`` will be squeezed automatically.
         """
 
-        if hasattr(self, 'mlp_x'):
+        if hasattr(self, "mlp_x"):
             x, y, z = self.mlp_x(x), self.mlp_y(y), self.mlp_z(y)
         if self.bias_x:
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
@@ -250,11 +259,11 @@ class Triaffine(nn.Module):
             y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
         # [batch_size, n_out, seq_len, seq_len, seq_len]
         if self.decompose:
-            wx = torch.einsum('bxi,oi->box', x, self.weight[0])
-            wz = torch.einsum('bzk,ok->boz', z, self.weight[1])
-            wy = torch.einsum('byj,oj->boy', y, self.weight[2])
-            s = torch.einsum('box,boz,boy->bozxy', wx, wz, wy)
+            wx = torch.einsum("bxi,oi->box", x, self.weight[0])
+            wz = torch.einsum("bzk,ok->boz", z, self.weight[1])
+            wy = torch.einsum("byj,oj->boy", y, self.weight[2])
+            s = torch.einsum("box,boz,boy->bozxy", wx, wz, wy)
         else:
-            w = torch.einsum('bzk,oikj->bozij', z, self.weight)
-            s = torch.einsum('bxi,bozij,byj->bozxy', x, w, y)
-        return s.squeeze(1) / self.n_in ** self.scale
+            w = torch.einsum("bzk,oikj->bozij", z, self.weight)
+            s = torch.einsum("bxi,bozij,byj->bozxy", x, w, y)
+        return s.squeeze(1) / self.n_in**self.scale

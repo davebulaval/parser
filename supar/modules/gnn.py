@@ -47,8 +47,8 @@ class GraphConvolutionalNetwork(nn.Module):
         n_model: int,
         n_layers: int = 1,
         selfloop: bool = True,
-        dropout: float = 0.,
-        norm: bool = True
+        dropout: float = 0.0,
+        norm: bool = True,
     ) -> GraphConvolutionalNetwork:
         super().__init__()
 
@@ -57,13 +57,15 @@ class GraphConvolutionalNetwork(nn.Module):
         self.selfloop = selfloop
         self.norm = norm
 
-        self.conv_layers = nn.ModuleList([
-            nn.Sequential(
-                GraphConv(n_model),
-                nn.LayerNorm([n_model]) if norm else nn.Identity()
-            )
-            for _ in range(n_layers)
-        ])
+        self.conv_layers = nn.ModuleList(
+            [
+                nn.Sequential(
+                    GraphConv(n_model),
+                    nn.LayerNorm([n_model]) if norm else nn.Identity(),
+                )
+                for _ in range(n_layers)
+            ]
+        )
         self.dropout = nn.Dropout(dropout)
 
     def __repr__(self):
@@ -76,7 +78,9 @@ class GraphConvolutionalNetwork(nn.Module):
             s += f", norm={self.norm}"
         return f"{self.__class__.__name__}({s})"
 
-    def forward(self, x: torch.Tensor, adj: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, adj: torch.Tensor, mask: torch.BoolTensor
+    ) -> torch.Tensor:
         r"""
         Args:
             x (~torch.Tensor):
@@ -92,7 +96,7 @@ class GraphConvolutionalNetwork(nn.Module):
         """
 
         if self.selfloop:
-            adj.diagonal(0, 1, 2).fill_(1.)
+            adj.diagonal(0, 1, 2).fill_(1.0)
         adj = adj.masked_fill(~(mask.unsqueeze(1) & mask.unsqueeze(2)), 0)
         for conv, norm in self.conv_layers:
             x = norm(x + self.dropout(conv(x, adj).relu()))
@@ -100,7 +104,6 @@ class GraphConvolutionalNetwork(nn.Module):
 
 
 class GraphConv(nn.Module):
-
     def __init__(self, n_model: int, bias: bool = True) -> GraphConv:
         super().__init__()
 
@@ -129,7 +132,13 @@ class GraphConv(nn.Module):
         """
 
         x = self.linear(x)
-        x = torch.matmul(adj * (adj.sum(1, True) * adj.sum(2, True) + torch.finfo(adj.dtype).eps).pow(-0.5), x)
+        x = torch.matmul(
+            adj
+            * (adj.sum(1, True) * adj.sum(2, True) + torch.finfo(adj.dtype).eps).pow(
+                -0.5
+            ),
+            x,
+        )
         if self.bias is not None:
             x = x + self.bias
         return x

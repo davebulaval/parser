@@ -158,7 +158,9 @@ def chuliu_edmonds(s: torch.Tensor) -> torch.Tensor:
     return tree
 
 
-def mst(scores: torch.Tensor, mask: torch.BoolTensor, multiroot: bool = False) -> torch.Tensor:
+def mst(
+    scores: torch.Tensor, mask: torch.BoolTensor, multiroot: bool = False
+) -> torch.Tensor:
     r"""
     MST algorithm for decoding non-projective trees.
     This is a wrapper for ChuLiu/Edmonds algorithm.
@@ -198,7 +200,7 @@ def mst(scores: torch.Tensor, mask: torch.BoolTensor, multiroot: bool = False) -
 
     preds = []
     for i, length in enumerate(mask.sum(1).tolist()):
-        s = scores[i][:length+1, :length+1]
+        s = scores[i][: length + 1, : length + 1]
         tree = chuliu_edmonds(s)
         roots = torch.where(tree[1:].eq(0))[0] + 1
         if not multiroot and len(roots) > 1:
@@ -217,7 +219,9 @@ def mst(scores: torch.Tensor, mask: torch.BoolTensor, multiroot: bool = False) -
     return pad(preds, total_length=seq_len).to(mask.device)
 
 
-def levenshtein(x: Iterable, y: Iterable, costs: Tuple = (1, 1, 1), align: bool = False) -> int:
+def levenshtein(
+    x: Iterable, y: Iterable, costs: Tuple = (1, 1, 1), align: bool = False
+) -> int:
     """
     Calculates the Levenshtein edit-distance between two sequences,
     which refers to the total number of tokens that must be
@@ -253,7 +257,11 @@ def levenshtein(x: Iterable, y: Iterable, costs: Tuple = (1, 1, 1), align: bool 
     # set up a 2-D array
     len1, len2 = len(x), len(y)
     dists = [list(range(len2 + 1))] + [[i] + [0] * len2 for i in range(1, len1 + 1)]
-    edits = [[0] + [3] * len2] + [[2] + [-1] * len2 for _ in range(1, len1 + 1)] if align else None
+    edits = (
+        [[0] + [3] * len2] + [[2] + [-1] * len2 for _ in range(1, len1 + 1)]
+        if align
+        else None
+    )
 
     # iterate over the array
     # i and j start from 1 and not 0 to stay close to the wikipedia pseudo-code
@@ -289,7 +297,6 @@ def levenshtein(x: Iterable, y: Iterable, costs: Tuple = (1, 1, 1), align: bool 
 
 
 class Logsumexp(Function):
-
     r"""
     Safer ``logsumexp`` to cure unnecessary NaN values that arise from inf arguments.
     See discussions at http://github.com/pytorch/pytorch/issues/49724.
@@ -311,11 +318,10 @@ class Logsumexp(Function):
         g, output = g.unsqueeze(dim), output.unsqueeze(dim)
         mask = g.eq(0).expand_as(x)
         grad = g * (x - output).exp()
-        return torch.where(mask, x.new_tensor(0.), grad), None
+        return torch.where(mask, x.new_tensor(0.0), grad), None
 
 
 class Logaddexp(Function):
-
     @staticmethod
     @torch.cuda.amp.custom_fwd(cast_inputs=torch.float)
     def forward(ctx, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -329,13 +335,12 @@ class Logaddexp(Function):
         x, y, output = ctx.saved_tensors
         mask = g.eq(0)
         grad_x, grad_y = (x - output).exp(), (y - output).exp()
-        grad_x = torch.where(mask, x.new_tensor(0.), grad_x)
-        grad_y = torch.where(mask, y.new_tensor(0.), grad_y)
+        grad_x = torch.where(mask, x.new_tensor(0.0), grad_x)
+        grad_y = torch.where(mask, y.new_tensor(0.0), grad_y)
         return grad_x, grad_y
 
 
 class SampledLogsumexp(Function):
-
     @staticmethod
     @torch.cuda.amp.custom_fwd(cast_inputs=torch.float)
     def forward(ctx, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
@@ -347,19 +352,28 @@ class SampledLogsumexp(Function):
     @torch.cuda.amp.custom_bwd
     def backward(ctx, g: torch.Tensor) -> Union[torch.Tensor, None]:
         from torch.distributions import OneHotCategorical
-        (x, ), dim = ctx.saved_tensors, ctx.dim
-        return g.unsqueeze(dim).mul(OneHotCategorical(logits=x.movedim(dim, -1)).sample().movedim(-1, dim)), None
+
+        (x,), dim = ctx.saved_tensors, ctx.dim
+        return (
+            g.unsqueeze(dim).mul(
+                OneHotCategorical(logits=x.movedim(dim, -1)).sample().movedim(-1, dim)
+            ),
+            None,
+        )
 
 
 class Sparsemax(Function):
-
     @staticmethod
     @torch.cuda.amp.custom_fwd(cast_inputs=torch.float)
     def forward(ctx, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         ctx.dim = dim
         sorted_x, _ = x.sort(dim, True)
         z = sorted_x.cumsum(dim) - 1
-        k = x.new_tensor(range(1, sorted_x.size(dim) + 1)).view(-1, *[1] * (x.dim() - 1)).transpose(0, dim)
+        k = (
+            x.new_tensor(range(1, sorted_x.size(dim) + 1))
+            .view(-1, *[1] * (x.dim() - 1))
+            .transpose(0, dim)
+        )
         k = (k * sorted_x).gt(z).sum(dim, True)
         tau = z.gather(dim, k - 1) / k
         p = torch.clamp(x - tau, 0)

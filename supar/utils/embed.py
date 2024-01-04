@@ -67,7 +67,7 @@ class Embedding(object):
         https://ai.tencent.com/ailab/nlp/zh/download.html
     """
 
-    CACHE = os.path.join(CACHE, 'data/embeds')
+    CACHE = os.path.join(CACHE, "data/embeds")
 
     def __init__(
         self,
@@ -75,8 +75,8 @@ class Embedding(object):
         unk: Optional[str] = None,
         skip_first: bool = False,
         cache: bool = True,
-        sep: str = ' ',
-        **kwargs
+        sep: str = " ",
+        **kwargs,
     ) -> Embedding:
         super().__init__()
 
@@ -117,7 +117,9 @@ class Embedding(object):
                 vectors = []
                 for index in elems.tolist():
                     f.seek(self.positions[index])
-                    vectors.append(list(map(float, f.readline().strip().split(self.sep)[1:])))
+                    vectors.append(
+                        list(map(float, f.readline().strip().split(self.sep)[1:]))
+                    )
                 vectors = torch.tensor(vectors)
         else:
             vectors = self.vectors
@@ -148,7 +150,12 @@ class Embedding(object):
         with open(self.path) as f:
             if self.skip_first:
                 f.readline()
-            return torch.tensor([list(map(float, line.strip().split(self.sep)[1:])) for line in progress_bar(f)])
+            return torch.tensor(
+                [
+                    list(map(float, line.strip().split(self.sep)[1:]))
+                    for line in progress_bar(f)
+                ]
+            )
 
     @lazy_property
     def positions(self):
@@ -168,13 +175,12 @@ class Embedding(object):
     def load(cls, path: str, unk: Optional[str] = None, **kwargs) -> Embedding:
         if path in PRETRAINED:
             cfg = dict(**PRETRAINED[path])
-            embed = cfg.pop('_target_')
+            embed = cfg.pop("_target_")
             return embed(**cfg, **kwargs)
         return cls(path, unk, **kwargs)
 
 
 class GloVeEmbedding(Embedding):
-
     r"""
     `GloVe`_: Global Vectors for Word Representation.
     Training is performed on aggregated global word-word co-occurrence statistics from a corpus,
@@ -197,20 +203,28 @@ class GloVeEmbedding(Embedding):
         https://nlp.stanford.edu/projects/glove/
     """
 
-    def __init__(self, src: str = '6B', dim: int = 100, reload=False, *args, **kwargs) -> GloVeEmbedding:
-        if src == '6B' or src == 'twitter.27B':
-            url = f'https://nlp.stanford.edu/data/glove.{src}.zip'
+    def __init__(
+        self, src: str = "6B", dim: int = 100, reload=False, *args, **kwargs
+    ) -> GloVeEmbedding:
+        if src == "6B" or src == "twitter.27B":
+            url = f"https://nlp.stanford.edu/data/glove.{src}.zip"
         else:
-            url = f'https://nlp.stanford.edu/data/glove.{src}.{dim}d.zip'
-        path = os.path.join(os.path.join(self.CACHE, 'glove'), f'glove.{src}.{dim}d.txt')
+            url = f"https://nlp.stanford.edu/data/glove.{src}.{dim}d.zip"
+        path = os.path.join(
+            os.path.join(self.CACHE, "glove"), f"glove.{src}.{dim}d.txt"
+        )
         if not os.path.exists(path) or reload:
-            download(url, os.path.join(self.CACHE, 'glove'), clean=True)
+            download(url, os.path.join(self.CACHE, "glove"), clean=True)
 
-        super().__init__(path=path, unk='unk', *args, **kwargs, )
+        super().__init__(
+            path=path,
+            unk="unk",
+            *args,
+            **kwargs,
+        )
 
 
 class FasttextEmbedding(Embedding):
-
     r"""
     `Fasttext`_ word embeddings for 157 languages, trained using CBOW, in dimension 300,
     with character n-grams of length 5, a window of size 5 and 10 negatives.
@@ -230,17 +244,18 @@ class FasttextEmbedding(Embedding):
         https://fasttext.cc/docs/en/crawl-vectors.html
     """
 
-    def __init__(self, lang: str = 'en', reload=False, *args, **kwargs) -> FasttextEmbedding:
-        url = f'https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.{lang}.300.vec.gz'
-        path = os.path.join(self.CACHE, 'fasttext', f'cc.{lang}.300.vec')
+    def __init__(
+        self, lang: str = "en", reload=False, *args, **kwargs
+    ) -> FasttextEmbedding:
+        url = f"https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.{lang}.300.vec.gz"
+        path = os.path.join(self.CACHE, "fasttext", f"cc.{lang}.300.vec")
         if not os.path.exists(path) or reload:
-            download(url, os.path.join(self.CACHE, 'fasttext'), clean=True)
+            download(url, os.path.join(self.CACHE, "fasttext"), clean=True)
 
         super().__init__(path=path, skip_first=True, *args, **kwargs)
 
 
 class GigaEmbedding(Embedding):
-
     r"""
     `Giga`_ word embeddings, trained on Chinese Gigaword Third Edition for Chinese using word2vec,
     used by :cite:`zhang-etal-2020-efficient` and :cite:`zhang-etal-2020-fast`.
@@ -259,16 +274,15 @@ class GigaEmbedding(Embedding):
     """
 
     def __init__(self, reload=False, *args, **kwargs) -> GigaEmbedding:
-        url = 'https://github.com/yzhangcs/parser/releases/download/v1.1.0/giga.100.zip'
-        path = os.path.join(self.CACHE, 'giga', 'giga.100.txt')
+        url = "https://github.com/yzhangcs/parser/releases/download/v1.1.0/giga.100.zip"
+        path = os.path.join(self.CACHE, "giga", "giga.100.txt")
         if not os.path.exists(path) or reload:
-            download(url, os.path.join(self.CACHE, 'giga'), clean=True)
+            download(url, os.path.join(self.CACHE, "giga"), clean=True)
 
         super().__init__(path=path, *args, **kwargs)
 
 
 class TencentEmbedding(Embedding):
-
     r"""
     `Tencent`_ word embeddings.
     The embeddings are trained on large-scale text collected from news, webpages, and novels with Directional Skip-Gram.
@@ -293,42 +307,60 @@ class TencentEmbedding(Embedding):
         https://ai.tencent.com/ailab/nlp/zh/download.html
     """
 
-    def __init__(self, dim: int = 100, large: bool = False, reload=False, *args, **kwargs) -> TencentEmbedding:
+    def __init__(
+        self, dim: int = 100, large: bool = False, reload=False, *args, **kwargs
+    ) -> TencentEmbedding:
         url = f'https://ai.tencent.com/ailab/nlp/zh/data/tencent-ailab-embedding-zh-d{dim}-v0.2.0{"" if large else "-s"}.tar.gz'  # noqa
         name = f'tencent-ailab-embedding-zh-d{dim}-v0.2.0{"" if large else "-s"}'
-        path = os.path.join(os.path.join(self.CACHE, 'tencent'), name, f'{name}.txt')
+        path = os.path.join(os.path.join(self.CACHE, "tencent"), name, f"{name}.txt")
         if not os.path.exists(path) or reload:
-            download(url, os.path.join(self.CACHE, 'tencent'), clean=True)
+            download(url, os.path.join(self.CACHE, "tencent"), clean=True)
 
         super().__init__(path=path, skip_first=True, *args, **kwargs)
 
 
 PRETRAINED = {
-    'glove-6b-50': {'_target_': GloVeEmbedding, 'src': '6B', 'dim': 50},
-    'glove-6b-100': {'_target_': GloVeEmbedding, 'src': '6B', 'dim': 100},
-    'glove-6b-200': {'_target_': GloVeEmbedding, 'src': '6B', 'dim': 200},
-    'glove-6b-300': {'_target_': GloVeEmbedding, 'src': '6B', 'dim': 300},
-    'glove-42b-300': {'_target_': GloVeEmbedding, 'src': '42B', 'dim': 300},
-    'glove-840b-300': {'_target_': GloVeEmbedding, 'src': '84B', 'dim': 300},
-    'glove-twitter-27b-25': {'_target_': GloVeEmbedding, 'src': 'twitter.27B', 'dim': 25},
-    'glove-twitter-27b-50': {'_target_': GloVeEmbedding, 'src': 'twitter.27B', 'dim': 50},
-    'glove-twitter-27b-100': {'_target_': GloVeEmbedding, 'src': 'twitter.27B', 'dim': 100},
-    'glove-twitter-27b-200': {'_target_': GloVeEmbedding, 'src': 'twitter.27B', 'dim': 200},
-    'fasttext-bg': {'_target_': FasttextEmbedding, 'lang': 'bg'},
-    'fasttext-ca': {'_target_': FasttextEmbedding, 'lang': 'ca'},
-    'fasttext-cs': {'_target_': FasttextEmbedding, 'lang': 'cs'},
-    'fasttext-de': {'_target_': FasttextEmbedding, 'lang': 'de'},
-    'fasttext-en': {'_target_': FasttextEmbedding, 'lang': 'en'},
-    'fasttext-es': {'_target_': FasttextEmbedding, 'lang': 'es'},
-    'fasttext-fr': {'_target_': FasttextEmbedding, 'lang': 'fr'},
-    'fasttext-it': {'_target_': FasttextEmbedding, 'lang': 'it'},
-    'fasttext-nl': {'_target_': FasttextEmbedding, 'lang': 'nl'},
-    'fasttext-no': {'_target_': FasttextEmbedding, 'lang': 'no'},
-    'fasttext-ro': {'_target_': FasttextEmbedding, 'lang': 'ro'},
-    'fasttext-ru': {'_target_': FasttextEmbedding, 'lang': 'ru'},
-    'giga-100': {'_target_': GigaEmbedding},
-    'tencent-100': {'_target_': TencentEmbedding, 'dim': 100},
-    'tencent-100-large': {'_target_': TencentEmbedding, 'dim': 100, 'large': True},
-    'tencent-200': {'_target_': TencentEmbedding, 'dim': 200},
-    'tencent-200-large': {'_target_': TencentEmbedding, 'dim': 200, 'large': True},
+    "glove-6b-50": {"_target_": GloVeEmbedding, "src": "6B", "dim": 50},
+    "glove-6b-100": {"_target_": GloVeEmbedding, "src": "6B", "dim": 100},
+    "glove-6b-200": {"_target_": GloVeEmbedding, "src": "6B", "dim": 200},
+    "glove-6b-300": {"_target_": GloVeEmbedding, "src": "6B", "dim": 300},
+    "glove-42b-300": {"_target_": GloVeEmbedding, "src": "42B", "dim": 300},
+    "glove-840b-300": {"_target_": GloVeEmbedding, "src": "84B", "dim": 300},
+    "glove-twitter-27b-25": {
+        "_target_": GloVeEmbedding,
+        "src": "twitter.27B",
+        "dim": 25,
+    },
+    "glove-twitter-27b-50": {
+        "_target_": GloVeEmbedding,
+        "src": "twitter.27B",
+        "dim": 50,
+    },
+    "glove-twitter-27b-100": {
+        "_target_": GloVeEmbedding,
+        "src": "twitter.27B",
+        "dim": 100,
+    },
+    "glove-twitter-27b-200": {
+        "_target_": GloVeEmbedding,
+        "src": "twitter.27B",
+        "dim": 200,
+    },
+    "fasttext-bg": {"_target_": FasttextEmbedding, "lang": "bg"},
+    "fasttext-ca": {"_target_": FasttextEmbedding, "lang": "ca"},
+    "fasttext-cs": {"_target_": FasttextEmbedding, "lang": "cs"},
+    "fasttext-de": {"_target_": FasttextEmbedding, "lang": "de"},
+    "fasttext-en": {"_target_": FasttextEmbedding, "lang": "en"},
+    "fasttext-es": {"_target_": FasttextEmbedding, "lang": "es"},
+    "fasttext-fr": {"_target_": FasttextEmbedding, "lang": "fr"},
+    "fasttext-it": {"_target_": FasttextEmbedding, "lang": "it"},
+    "fasttext-nl": {"_target_": FasttextEmbedding, "lang": "nl"},
+    "fasttext-no": {"_target_": FasttextEmbedding, "lang": "no"},
+    "fasttext-ro": {"_target_": FasttextEmbedding, "lang": "ro"},
+    "fasttext-ru": {"_target_": FasttextEmbedding, "lang": "ru"},
+    "giga-100": {"_target_": GigaEmbedding},
+    "tencent-100": {"_target_": TencentEmbedding, "dim": 100},
+    "tencent-100-large": {"_target_": TencentEmbedding, "dim": 100, "large": True},
+    "tencent-200": {"_target_": TencentEmbedding, "dim": 200},
+    "tencent-200-large": {"_target_": TencentEmbedding, "dim": 200, "large": True},
 }

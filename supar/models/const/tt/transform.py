@@ -36,7 +36,7 @@ class TetraTaggingTree(Tree):
             Non-terminal labels.
     """
 
-    fields = ['WORD', 'POS', 'TREE', 'LEAF', 'NODE']
+    fields = ["WORD", "POS", "TREE", "LEAF", "NODE"]
 
     def __init__(
         self,
@@ -44,7 +44,7 @@ class TetraTaggingTree(Tree):
         POS: Optional[Union[Field, Iterable[Field]]] = None,
         TREE: Optional[Union[Field, Iterable[Field]]] = None,
         LEAF: Optional[Union[Field, Iterable[Field]]] = None,
-        NODE: Optional[Union[Field, Iterable[Field]]] = None
+        NODE: Optional[Union[Field, Iterable[Field]]] = None,
     ) -> Tree:
         super().__init__()
 
@@ -120,12 +120,20 @@ class TetraTaggingTree(Tree):
 
         def traverse(tree: nltk.Tree, left: bool = True) -> List:
             if len(tree) == 1 and not isinstance(tree[0], nltk.Tree):
-                return ['l' if left else 'r'], []
+                return ["l" if left else "r"], []
             if len(tree) == 1 and not isinstance(tree[0][0], nltk.Tree):
                 return [f"{'l' if left else 'r'}/{tree.label()}"], []
-            return tuple(sum(i, []) for i in zip(*[traverse(tree[0]),
-                                                   ([], [f'{("L" if left else "R")}/{tree.label()}']),
-                                                   traverse(tree[1], False)]))
+            return tuple(
+                sum(i, [])
+                for i in zip(
+                    *[
+                        traverse(tree[0]),
+                        ([], [f'{("L" if left else "R")}/{tree.label()}']),
+                        traverse(tree[1], False),
+                    ]
+                )
+            )
+
         return traverse(tree[0])
 
     @classmethod
@@ -133,8 +141,8 @@ class TetraTaggingTree(Tree):
         cls,
         tree: nltk.Tree,
         actions: Tuple[Sequence, Sequence],
-        mark: Union[str, Tuple[str]] = ('*', '|<>'),
-        join: str = '::',
+        mark: Union[str, Tuple[str]] = ("*", "|<>"),
+        join: str = "::",
     ) -> nltk.Tree:
         r"""
         Recovers a constituency tree from tetra-tagging actions.
@@ -180,22 +188,22 @@ class TetraTaggingTree(Tree):
         stack = []
         leaves = [nltk.Tree(pos, [token]) for token, pos in tree.pos()]
         for i, (al, an) in enumerate(zip(*actions)):
-            leaf = nltk.Tree(al.split('/', 1)[1], [leaves[i]])
-            if al.startswith('l'):
+            leaf = nltk.Tree(al.split("/", 1)[1], [leaves[i]])
+            if al.startswith("l"):
                 stack.append([leaf, None])
             else:
                 slot = stack[-1][1]
                 slot.append(leaf)
-            if an.startswith('L'):
-                node = nltk.Tree(an.split('/', 1)[1], [stack[-1][0]])
+            if an.startswith("L"):
+                node = nltk.Tree(an.split("/", 1)[1], [stack[-1][0]])
                 stack[-1][0] = node
             else:
-                node = nltk.Tree(an.split('/', 1)[1], [stack.pop()[0]])
+                node = nltk.Tree(an.split("/", 1)[1], [stack.pop()[0]])
                 slot = stack[-1][1]
                 slot.append(node)
             stack[-1][1] = node
         # the last leaf must be leftward
-        leaf = nltk.Tree(actions[0][-1].split('/', 1)[1], [leaves[-1]])
+        leaf = nltk.Tree(actions[0][-1].split("/", 1)[1], [leaves[-1]])
         if len(stack) > 0:
             stack[-1][1].append(leaf)
         else:
@@ -214,13 +222,11 @@ class TetraTaggingTree(Tree):
             for label in reversed(labels[:-1]):
                 tree = nltk.Tree(label, [tree])
             return [tree]
+
         return debinarize(nltk.Tree(tree.label(), [stack[0][0]]))[0]
 
     def load(
-        self,
-        data: Union[str, Iterable],
-        lang: Optional[str] = None,
-        **kwargs
+        self, data: Union[str, Iterable], lang: Optional[str] = None, **kwargs
     ) -> List[TetraTaggingTreeSentence]:
         r"""
         Args:
@@ -238,23 +244,35 @@ class TetraTaggingTree(Tree):
         if lang is not None:
             tokenizer = Tokenizer(lang)
         if isinstance(data, str) and os.path.exists(data):
-            if data.endswith('.txt'):
-                data = (s.split() if lang is None else tokenizer(s) for s in open(data) if len(s) > 1)
+            if data.endswith(".txt"):
+                data = (
+                    s.split() if lang is None else tokenizer(s)
+                    for s in open(data)
+                    if len(s) > 1
+                )
             else:
                 data = open(data)
         else:
             if lang is not None:
-                data = [tokenizer(i) for i in ([data] if isinstance(data, str) else data)]
+                data = [
+                    tokenizer(i) for i in ([data] if isinstance(data, str) else data)
+                ]
             else:
                 data = [data] if isinstance(data[0], str) else data
 
         index = 0
         for s in data:
             try:
-                tree = nltk.Tree.fromstring(s) if isinstance(s, str) else self.totree(s, self.root)
+                tree = (
+                    nltk.Tree.fromstring(s)
+                    if isinstance(s, str)
+                    else self.totree(s, self.root)
+                )
                 sentence = TetraTaggingTreeSentence(self, tree, index)
             except ValueError:
-                logger.warning(f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!")
+                logger.warning(
+                    f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!"
+                )
                 continue
             else:
                 yield sentence
@@ -274,10 +292,7 @@ class TetraTaggingTreeSentence(Sentence):
     """
 
     def __init__(
-        self,
-        transform: TetraTaggingTree,
-        tree: nltk.Tree,
-        index: Optional[int] = None
+        self, transform: TetraTaggingTree, tree: nltk.Tree, index: Optional[int] = None
     ) -> TetraTaggingTreeSentence:
         super().__init__(transform, index)
 
@@ -287,10 +302,12 @@ class TetraTaggingTreeSentence(Sentence):
             oracle_tree = tree.copy(True)
             # the root node must have a unary chain
             if len(oracle_tree) > 1:
-                oracle_tree[:] = [nltk.Tree('*', oracle_tree)]
-            oracle_tree = TetraTaggingTree.binarize(oracle_tree, left=False, implicit=True)
+                oracle_tree[:] = [nltk.Tree("*", oracle_tree)]
+            oracle_tree = TetraTaggingTree.binarize(
+                oracle_tree, left=False, implicit=True
+            )
             if len(oracle_tree) == 1 and not isinstance(oracle_tree[0][0], nltk.Tree):
-                oracle_tree[0] = nltk.Tree('*', [oracle_tree[0]])
+                oracle_tree[0] = nltk.Tree("*", [oracle_tree[0]])
             leaves, nodes = transform.tree2action(oracle_tree)
         self.values = [words, tags, tree, leaves, nodes]
 

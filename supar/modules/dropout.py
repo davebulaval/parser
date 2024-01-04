@@ -48,7 +48,9 @@ class TokenDropout(nn.Module):
 
         if not self.training:
             return x
-        return x * (x.new_empty(x.shape[:2]).bernoulli_(1 - self.p) / (1 - self.p)).unsqueeze(-1)
+        return x * (
+            x.new_empty(x.shape[:2]).bernoulli_(1 - self.p) / (1 - self.p)
+        ).unsqueeze(-1)
 
 
 class SharedDropout(nn.Module):
@@ -98,7 +100,11 @@ class SharedDropout(nn.Module):
 
         if not self.training:
             return x
-        return x * self.get_mask(x[:, 0], self.p).unsqueeze(1) if self.batch_first else self.get_mask(x[0], self.p)
+        return (
+            x * self.get_mask(x[:, 0], self.p).unsqueeze(1)
+            if self.batch_first
+            else self.get_mask(x[0], self.p)
+        )
 
     @staticmethod
     def get_mask(x: torch.Tensor, p: float) -> torch.FloatTensor:

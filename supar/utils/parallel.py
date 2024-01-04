@@ -13,12 +13,11 @@ import torch.nn as nn
 
 
 class DistributedDataParallel(nn.parallel.DistributedDataParallel):
-
     def __init__(self, module, **kwargs):
         super().__init__(module, **kwargs)
 
     def __getattr__(self, name):
-        wrapped = super().__getattr__('module')
+        wrapped = super().__getattr__("module")
         if hasattr(wrapped, name):
             return getattr(wrapped, name)
         return super().__getattr__(name)
@@ -34,6 +33,7 @@ def wait(fn) -> Any:
             dist.barrier()
             value = gather(value)[0]
         return value
+
     return wrapper
 
 
@@ -43,15 +43,15 @@ def gather(obj: Any) -> Iterable[Any]:
     return objs
 
 
-def reduce(obj: Any, reduction: str = 'sum') -> Any:
+def reduce(obj: Any, reduction: str = "sum") -> Any:
     objs = gather(obj)
-    if reduction == 'sum':
+    if reduction == "sum":
         return functools.reduce(lambda x, y: x + y, objs)
-    elif reduction == 'mean':
+    elif reduction == "mean":
         return functools.reduce(lambda x, y: x + y, objs) / len(objs)
-    elif reduction == 'min':
+    elif reduction == "min":
         return min(objs)
-    elif reduction == 'max':
+    elif reduction == "max":
         return max(objs)
     else:
         raise NotImplementedError(f"Unsupported reduction {reduction}")
@@ -67,14 +67,15 @@ def is_master():
 
 def get_free_port():
     import socket
+
     s = socket.socket()
-    s.bind(('', 0))
+    s.bind(("", 0))
     port = str(s.getsockname()[1])
     s.close()
     return port
 
 
 def get_device_count():
-    if 'CUDA_VISIBLE_DEVICES' in os.environ:
-        return len(re.findall(r'\d+', os.environ['CUDA_VISIBLE_DEVICES']))
+    if "CUDA_VISIBLE_DEVICES" in os.environ:
+        return len(re.findall(r"\d+", os.environ["CUDA_VISIBLE_DEVICES"]))
     return torch.cuda.device_count()

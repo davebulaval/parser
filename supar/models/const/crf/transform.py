@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set,
-                    Tuple, Union)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import nltk
 
@@ -34,15 +33,15 @@ class Tree(Transform):
             The factorized sequence of binarized tree traversed in post-order.
     """
 
-    root = ''
-    fields = ['WORD', 'POS', 'TREE', 'CHART']
+    root = ""
+    fields = ["WORD", "POS", "TREE", "CHART"]
 
     def __init__(
         self,
         WORD: Optional[Union[Field, Iterable[Field]]] = None,
         POS: Optional[Union[Field, Iterable[Field]]] = None,
         TREE: Optional[Union[Field, Iterable[Field]]] = None,
-        CHART: Optional[Union[Field, Iterable[Field]]] = None
+        CHART: Optional[Union[Field, Iterable[Field]]] = None,
     ) -> Tree:
         super().__init__()
 
@@ -57,14 +56,14 @@ class Tree(Transform):
 
     @property
     def tgt(self):
-        return self.CHART,
+        return (self.CHART,)
 
     @classmethod
     def totree(
         cls,
         tokens: List[Union[str, Tuple]],
-        root: str = '',
-        normalize: Dict[str, str] = {'(': '-LRB-', ')': '-RRB-'}
+        root: str = "",
+        normalize: Dict[str, str] = {"(": "-LRB-", ")": "-RRB-"},
     ) -> nltk.Tree:
         r"""
         Converts a list of tokens to a :class:`nltk.tree.Tree`, with missing fields filled in with underscores.
@@ -96,17 +95,23 @@ class Tree(Transform):
 
         normalize = str.maketrans(normalize)
         if isinstance(tokens[0], str):
-            tokens = [(token, '_') for token in tokens]
-        return nltk.Tree(root, [nltk.Tree('', [nltk.Tree(pos, [word.translate(normalize)])]) for word, pos in tokens])
+            tokens = [(token, "_") for token in tokens]
+        return nltk.Tree(
+            root,
+            [
+                nltk.Tree("", [nltk.Tree(pos, [word.translate(normalize)])])
+                for word, pos in tokens
+            ],
+        )
 
     @classmethod
     def binarize(
         cls,
         tree: nltk.Tree,
         left: bool = True,
-        mark: str = '*',
-        join: str = '::',
-        implicit: bool = False
+        mark: str = "*",
+        join: str = "::",
+        implicit: bool = False,
     ) -> nltk.Tree:
         r"""
         Conducts binarization over the tree.
@@ -215,17 +220,17 @@ class Tree(Transform):
         nodes = [tree]
         if len(tree) == 1:
             if not isinstance(tree[0][0], nltk.Tree):
-                tree[0] = nltk.Tree(f'{tree.label()}{mark}', [tree[0]])
+                tree[0] = nltk.Tree(f"{tree.label()}{mark}", [tree[0]])
             nodes = [tree[0]]
         while nodes:
             node = nodes.pop()
             if isinstance(node, nltk.Tree):
                 if implicit:
-                    label = ''
+                    label = ""
                 else:
                     label = node.label()
                     if mark not in label:
-                        label = f'{label}{mark}'
+                        label = f"{label}{mark}"
                 # ensure that only non-terminals can be attached to a n-ary subtree
                 if len(node) > 1:
                     for child in node:
@@ -248,7 +253,7 @@ class Tree(Transform):
         cls,
         tree: nltk.Tree,
         delete_labels: Optional[Set[str]] = None,
-        equal_labels: Optional[Dict[str, str]] = None
+        equal_labels: Optional[Dict[str, str]] = None,
     ) -> Iterable[Tuple]:
         r"""
         Factorizes the tree into a sequence traversed in post-order.
@@ -304,6 +309,7 @@ class Tree(Transform):
             if label is not None and j > i:
                 spans = spans + [(i, j, label)]
             return j, spans
+
         return track(tree, 0)[1]
 
     @classmethod
@@ -312,10 +318,10 @@ class Tree(Transform):
         sentence: Union[nltk.Tree, Iterable],
         spans: Iterable[Tuple],
         delete_labels: Optional[Set[str]] = None,
-        mark: Union[str, Tuple[str]] = ('*', '|<>'),
-        root: str = '',
-        join: str = '::',
-        postorder: bool = True
+        mark: Union[str, Tuple[str]] = ("*", "|<>"),
+        root: str = "",
+        join: str = "::",
+        postorder: bool = True,
     ) -> nltk.Tree:
         r"""
         Builds a constituency tree from a span sequence.
@@ -385,8 +391,14 @@ class Tree(Transform):
 
         """
 
-        tree = sentence if isinstance(sentence, nltk.Tree) else Tree.totree(sentence, root)
-        leaves = [subtree for subtree in tree.subtrees() if not isinstance(subtree[0], nltk.Tree)]
+        tree = (
+            sentence if isinstance(sentence, nltk.Tree) else Tree.totree(sentence, root)
+        )
+        leaves = [
+            subtree
+            for subtree in tree.subtrees()
+            if not isinstance(subtree[0], nltk.Tree)
+        ]
         if postorder:
             spans = sorted(spans, key=lambda x: (x[1], x[1] - x[0]))
 
@@ -396,12 +408,16 @@ class Tree(Transform):
             i, j, label = span
             if delete_labels is not None and label in delete_labels:
                 continue
-            stack.extend([(n, n + 1, leaf) for n, leaf in enumerate(leaves[start:i], start)])
+            stack.extend(
+                [(n, n + 1, leaf) for n, leaf in enumerate(leaves[start:i], start)]
+            )
             children = []
             while len(stack) > 0 and i <= stack[-1][0]:
                 children = [stack.pop()] + children
             start = children[-1][1] if len(children) > 0 else i
-            children.extend([(n, n + 1, leaf) for n, leaf in enumerate(leaves[start:j], start)])
+            children.extend(
+                [(n, n + 1, leaf) for n, leaf in enumerate(leaves[start:j], start)]
+            )
             start = j
             if not label or label.endswith(mark):
                 stack.extend(children)
@@ -415,10 +431,7 @@ class Tree(Transform):
         return nltk.Tree(root, [i[-1] for i in stack])
 
     def load(
-        self,
-        data: Union[str, Iterable],
-        lang: Optional[str] = None,
-        **kwargs
+        self, data: Union[str, Iterable], lang: Optional[str] = None, **kwargs
     ) -> List[TreeSentence]:
         r"""
         Args:
@@ -436,23 +449,35 @@ class Tree(Transform):
         if lang is not None:
             tokenizer = Tokenizer(lang)
         if isinstance(data, str) and os.path.exists(data):
-            if data.endswith('.txt'):
-                data = (s.split() if lang is None else tokenizer(s) for s in open(data) if len(s) > 1)
+            if data.endswith(".txt"):
+                data = (
+                    s.split() if lang is None else tokenizer(s)
+                    for s in open(data)
+                    if len(s) > 1
+                )
             else:
                 data = open(data)
         else:
             if lang is not None:
-                data = [tokenizer(i) for i in ([data] if isinstance(data, str) else data)]
+                data = [
+                    tokenizer(i) for i in ([data] if isinstance(data, str) else data)
+                ]
             else:
                 data = [data] if isinstance(data[0], str) else data
 
         index = 0
         for s in data:
             try:
-                tree = nltk.Tree.fromstring(s) if isinstance(s, str) else self.totree(s, self.root)
+                tree = (
+                    nltk.Tree.fromstring(s)
+                    if isinstance(s, str)
+                    else self.totree(s, self.root)
+                )
                 sentence = TreeSentence(self, tree, index, **kwargs)
             except ValueError:
-                logger.warning(f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!")
+                logger.warning(
+                    f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!"
+                )
                 continue
             else:
                 yield sentence
@@ -472,18 +497,16 @@ class TreeSentence(Sentence):
     """
 
     def __init__(
-        self,
-        transform: Tree,
-        tree: nltk.Tree,
-        index: Optional[int] = None,
-        **kwargs
+        self, transform: Tree, tree: nltk.Tree, index: Optional[int] = None, **kwargs
     ) -> TreeSentence:
         super().__init__(transform, index)
 
         words, tags, chart = *zip(*tree.pos()), None
         if transform.training:
             chart = [[None] * (len(words) + 1) for _ in range(len(words) + 1)]
-            for i, j, label in Tree.factorize(Tree.binarize(tree, implicit=kwargs.get('implicit', False))[0]):
+            for i, j, label in Tree.factorize(
+                Tree.binarize(tree, implicit=kwargs.get("implicit", False))[0]
+            ):
                 chart[i][j] = label
         self.values = [words, tags, tree, chart]
 
@@ -495,4 +518,5 @@ class TreeSentence(Sentence):
 
     def pretty_format(self, sentence: Any = None, highlight: Any = (), **kwargs) -> str:
         from nltk.treeprettyprinter import TreePrettyPrinter
+
         return TreePrettyPrinter(self.values[-2], sentence, highlight).text(**kwargs)

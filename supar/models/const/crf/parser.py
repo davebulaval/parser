@@ -25,7 +25,7 @@ class CRFConstituencyParser(Parser):
     The implementation of CRF Constituency Parser :cite:`zhang-etal-2020-fast`.
     """
 
-    NAME = 'crf-constituency'
+    NAME = "crf-constituency"
     MODEL = CRFConstituencyModel
 
     def __init__(self, *args, **kwargs):
@@ -48,10 +48,10 @@ class CRFConstituencyParser(Parser):
         amp: bool = False,
         cache: bool = False,
         mbr: bool = True,
-        delete: Set = {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
-        equal: Dict = {'ADVP': 'PRT'},
+        delete: Set = {"TOP", "S1", "-NONE-", ",", ":", "``", "''", ".", "?", "!", ""},
+        equal: Dict = {"ADVP": "PRT"},
         verbose: bool = True,
-        **kwargs
+        **kwargs,
     ):
         return super().train(**Config().update(locals()))
 
@@ -64,10 +64,10 @@ class CRFConstituencyParser(Parser):
         amp: bool = False,
         cache: bool = False,
         mbr: bool = True,
-        delete: Set = {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
-        equal: Dict = {'ADVP': 'PRT'},
+        delete: Set = {"TOP", "S1", "-NONE-", ",", ":", "``", "''", ".", "?", "!", ""},
+        equal: Dict = {"ADVP": "PRT"},
         verbose: bool = True,
-        **kwargs
+        **kwargs,
     ):
         return super().evaluate(**Config().update(locals()))
 
@@ -84,7 +84,7 @@ class CRFConstituencyParser(Parser):
         cache: bool = False,
         mbr: bool = True,
         verbose: bool = True,
-        **kwargs
+        **kwargs,
     ):
         return super().predict(**Config().update(locals()))
 
@@ -104,11 +104,15 @@ class CRFConstituencyParser(Parser):
         s_span, s_label = self.model(words, feats)
         loss, s_span = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
         chart_preds = self.model.decode(s_span, s_label, mask)
-        preds = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
-                 for tree, chart in zip(trees, chart_preds)]
-        return SpanMetric(loss,
-                          [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
-                          [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in trees])
+        preds = [
+            Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
+            for tree, chart in zip(trees, chart_preds)
+        ]
+        return SpanMetric(
+            loss,
+            [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
+            [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in trees],
+        )
 
     @torch.no_grad()
     def pred_step(self, batch: Batch) -> Batch:
@@ -116,12 +120,18 @@ class CRFConstituencyParser(Parser):
         mask, lens = batch.mask[:, 1:], batch.lens - 2
         mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
         s_span, s_label = self.model(words, feats)
-        s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
+        s_span = (
+            ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals
+            if self.args.mbr
+            else s_span
+        )
         chart_preds = self.model.decode(s_span, s_label, mask)
-        batch.trees = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
-                       for tree, chart in zip(trees, chart_preds)]
+        batch.trees = [
+            Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
+            for tree, chart in zip(trees, chart_preds)
+        ]
         if self.args.prob:
-            batch.probs = [prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)]
+            batch.probs = [prob[: i - 1, 1:i].cpu() for i, prob in zip(lens, s_span)]
         return batch
 
     @classmethod
@@ -143,61 +153,93 @@ class CRFConstituencyParser(Parser):
         """
 
         args = Config(**locals())
-        os.makedirs(os.path.dirname(path) or './', exist_ok=True)
+        os.makedirs(os.path.dirname(path) or "./", exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
             parser.model = cls.MODEL(**parser.args)
-            parser.model.load_pretrained(parser.transform.WORD[0].embed).to(parser.device)
+            parser.model.load_pretrained(parser.transform.WORD[0].embed).to(
+                parser.device
+            )
             return parser
 
         logger.info("Building the fields")
         TAG, CHAR, ELMO, BERT = None, None, None, None
-        if args.encoder == 'bert':
+        if args.encoder == "bert":
             t = TransformerTokenizer(args.bert)
-            WORD = SubwordField('words', pad=t.pad, unk=t.unk, bos=t.bos, eos=t.eos, fix_len=args.fix_len, tokenize=t)
+            WORD = SubwordField(
+                "words",
+                pad=t.pad,
+                unk=t.unk,
+                bos=t.bos,
+                eos=t.eos,
+                fix_len=args.fix_len,
+                tokenize=t,
+            )
             WORD.vocab = t.vocab
         else:
-            WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, eos=EOS, lower=True)
-            if 'tag' in args.feat:
-                TAG = Field('tags', bos=BOS, eos=EOS)
-            if 'char' in args.feat:
-                CHAR = SubwordField('chars', pad=PAD, unk=UNK, bos=BOS, eos=EOS, fix_len=args.fix_len)
-            if 'elmo' in args.feat:
+            WORD = Field("words", pad=PAD, unk=UNK, bos=BOS, eos=EOS, lower=True)
+            if "tag" in args.feat:
+                TAG = Field("tags", bos=BOS, eos=EOS)
+            if "char" in args.feat:
+                CHAR = SubwordField(
+                    "chars", pad=PAD, unk=UNK, bos=BOS, eos=EOS, fix_len=args.fix_len
+                )
+            if "elmo" in args.feat:
                 from allennlp.modules.elmo import batch_to_ids
-                ELMO = RawField('elmo')
+
+                ELMO = RawField("elmo")
                 ELMO.compose = lambda x: batch_to_ids(x).to(WORD.device)
-            if 'bert' in args.feat:
+            if "bert" in args.feat:
                 t = TransformerTokenizer(args.bert)
-                BERT = SubwordField('bert', pad=t.pad, unk=t.unk, bos=t.bos, eos=t.eos, fix_len=args.fix_len, tokenize=t)
+                BERT = SubwordField(
+                    "bert",
+                    pad=t.pad,
+                    unk=t.unk,
+                    bos=t.bos,
+                    eos=t.eos,
+                    fix_len=args.fix_len,
+                    tokenize=t,
+                )
                 BERT.vocab = t.vocab
-        TREE = RawField('trees')
-        CHART = ChartField('charts')
+        TREE = RawField("trees")
+        CHART = ChartField("charts")
         transform = Tree(WORD=(WORD, CHAR, ELMO, BERT), POS=TAG, TREE=TREE, CHART=CHART)
 
         train = Dataset(transform, args.train, **args)
-        if args.encoder != 'bert':
-            WORD.build(train, args.min_freq, (Embedding.load(args.embed) if args.embed else None), lambda x: x / torch.std(x))
+        if args.encoder != "bert":
+            WORD.build(
+                train,
+                args.min_freq,
+                (Embedding.load(args.embed) if args.embed else None),
+                lambda x: x / torch.std(x),
+            )
             if TAG is not None:
                 TAG.build(train)
             if CHAR is not None:
                 CHAR.build(train)
         CHART.build(train)
-        args.update({
-            'n_words': len(WORD.vocab) if args.encoder == 'bert' else WORD.vocab.n_init,
-            'n_labels': len(CHART.vocab),
-            'n_tags': len(TAG.vocab) if TAG is not None else None,
-            'n_chars': len(CHAR.vocab) if CHAR is not None else None,
-            'char_pad_index': CHAR.pad_index if CHAR is not None else None,
-            'bert_pad_index': BERT.pad_index if BERT is not None else None,
-            'pad_index': WORD.pad_index,
-            'unk_index': WORD.unk_index,
-            'bos_index': WORD.bos_index,
-            'eos_index': WORD.eos_index
-        })
+        args.update(
+            {
+                "n_words": len(WORD.vocab)
+                if args.encoder == "bert"
+                else WORD.vocab.n_init,
+                "n_labels": len(CHART.vocab),
+                "n_tags": len(TAG.vocab) if TAG is not None else None,
+                "n_chars": len(CHAR.vocab) if CHAR is not None else None,
+                "char_pad_index": CHAR.pad_index if CHAR is not None else None,
+                "bert_pad_index": BERT.pad_index if BERT is not None else None,
+                "pad_index": WORD.pad_index,
+                "unk_index": WORD.unk_index,
+                "bos_index": WORD.bos_index,
+                "eos_index": WORD.eos_index,
+            }
+        )
         logger.info(f"{transform}")
 
         logger.info("Building the model")
-        model = cls.MODEL(**args).load_pretrained(WORD.embed if hasattr(WORD, 'embed') else None)
+        model = cls.MODEL(**args).load_pretrained(
+            WORD.embed if hasattr(WORD, "embed") else None
+        )
         logger.info(f"{model}\n")
 
         parser = cls(args, model, transform)

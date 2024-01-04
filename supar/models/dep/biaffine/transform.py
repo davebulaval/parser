@@ -48,7 +48,18 @@ class CoNLL(Transform):
             Dependency relations to the PHEAD, or underscores if not available.
     """
 
-    fields = ['ID', 'FORM', 'LEMMA', 'CPOS', 'POS', 'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL']
+    fields = [
+        "ID",
+        "FORM",
+        "LEMMA",
+        "CPOS",
+        "POS",
+        "FEATS",
+        "HEAD",
+        "DEPREL",
+        "PHEAD",
+        "PDEPREL",
+    ]
 
     def __init__(
         self,
@@ -61,7 +72,7 @@ class CoNLL(Transform):
         HEAD: Optional[Union[Field, Iterable[Field]]] = None,
         DEPREL: Optional[Union[Field, Iterable[Field]]] = None,
         PHEAD: Optional[Union[Field, Iterable[Field]]] = None,
-        PDEPREL: Optional[Union[Field, Iterable[Field]]] = None
+        PDEPREL: Optional[Union[Field, Iterable[Field]]] = None,
     ) -> CoNLL:
         super().__init__()
 
@@ -85,16 +96,16 @@ class CoNLL(Transform):
         return self.HEAD, self.DEPREL, self.PHEAD, self.PDEPREL
 
     @classmethod
-    def get_arcs(cls, sequence, placeholder='_'):
+    def get_arcs(cls, sequence, placeholder="_"):
         return [-1 if i == placeholder else int(i) for i in sequence]
 
     @classmethod
-    def get_sibs(cls, sequence, placeholder='_'):
+    def get_sibs(cls, sequence, placeholder="_"):
         sibs = [[0] * (len(sequence) + 1) for _ in range(len(sequence) + 1)]
         heads = [0] + [-1 if i == placeholder else int(i) for i in sequence]
 
         for i, hi in enumerate(heads[1:], 1):
-            for j, hj in enumerate(heads[i + 1:], i + 1):
+            for j, hj in enumerate(heads[i + 1 :], i + 1):
                 di, dj = hi - i, hj - j
                 if hi >= 0 and hj >= 0 and hi == hj and di * dj > 0:
                     if abs(di) > abs(dj):
@@ -108,28 +119,28 @@ class CoNLL(Transform):
     def get_edges(cls, sequence):
         edges = [[0] * (len(sequence) + 1) for _ in range(len(sequence) + 1)]
         for i, s in enumerate(sequence, 1):
-            if s != '_':
-                for pair in s.split('|'):
-                    edges[i][int(pair.split(':')[0])] = 1
+            if s != "_":
+                for pair in s.split("|"):
+                    edges[i][int(pair.split(":")[0])] = 1
         return edges
 
     @classmethod
     def get_labels(cls, sequence):
         labels = [[None] * (len(sequence) + 1) for _ in range(len(sequence) + 1)]
         for i, s in enumerate(sequence, 1):
-            if s != '_':
-                for pair in s.split('|'):
-                    edge, label = pair.split(':', 1)
+            if s != "_":
+                for pair in s.split("|"):
+                    edge, label = pair.split(":", 1)
                     labels[i][int(edge)] = label
         return labels
 
     @classmethod
     def build_relations(cls, chart):
-        sequence = ['_'] * len(chart)
+        sequence = ["_"] * len(chart)
         for i, row in enumerate(chart):
             pairs = [(j, label) for j, label in enumerate(row) if label is not None]
             if len(pairs) > 0:
-                sequence[i] = '|'.join(f"{head}:{label}" for head, label in pairs)
+                sequence[i] = "|".join(f"{head}:{label}" for head, label in pairs)
         return sequence
 
     @classmethod
@@ -166,17 +177,31 @@ class CoNLL(Transform):
         """
 
         if isinstance(tokens[0], str):
-            s = '\n'.join([f"{i}\t{word}\t" + '\t'.join(['_'] * 8)
-                           for i, word in enumerate(tokens, 1)])
+            s = "\n".join(
+                [
+                    f"{i}\t{word}\t" + "\t".join(["_"] * 8)
+                    for i, word in enumerate(tokens, 1)
+                ]
+            )
         elif len(tokens[0]) == 2:
-            s = '\n'.join([f"{i}\t{word}\t_\t{tag}\t" + '\t'.join(['_'] * 6)
-                           for i, (word, tag) in enumerate(tokens, 1)])
+            s = "\n".join(
+                [
+                    f"{i}\t{word}\t_\t{tag}\t" + "\t".join(["_"] * 6)
+                    for i, (word, tag) in enumerate(tokens, 1)
+                ]
+            )
         elif len(tokens[0]) == 3:
-            s = '\n'.join([f"{i}\t{word}\t{lemma}\t{tag}\t" + '\t'.join(['_'] * 6)
-                           for i, (word, lemma, tag) in enumerate(tokens, 1)])
+            s = "\n".join(
+                [
+                    f"{i}\t{word}\t{lemma}\t{tag}\t" + "\t".join(["_"] * 6)
+                    for i, (word, lemma, tag) in enumerate(tokens, 1)
+                ]
+            )
         else:
-            raise RuntimeError(f"Invalid sequence {tokens}. Only list of str or list of word/pos/lemma tuples are support.")
-        return s + '\n'
+            raise RuntimeError(
+                f"Invalid sequence {tokens}. Only list of str or list of word/pos/lemma tuples are support."
+            )
+        return s + "\n"
 
     @classmethod
     def isprojective(cls, sequence: Sequence[int]) -> bool:
@@ -203,7 +228,7 @@ class CoNLL(Transform):
 
         pairs = [(h, d) for d, h in enumerate(sequence, 1) if h >= 0]
         for i, (hi, di) in enumerate(pairs):
-            for hj, dj in pairs[i + 1:]:
+            for hj, dj in pairs[i + 1 :]:
                 (li, ri), (lj, rj) = sorted([hi, di]), sorted([hj, dj])
                 if li <= hj <= ri and hi == dj:
                     return False
@@ -214,7 +239,9 @@ class CoNLL(Transform):
         return True
 
     @classmethod
-    def istree(cls, sequence: Sequence[int], proj: bool = False, multiroot: bool = False) -> bool:
+    def istree(
+        cls, sequence: Sequence[int], proj: bool = False, multiroot: bool = False
+    ) -> bool:
         r"""
         Checks if the arcs form an valid dependency tree.
 
@@ -237,6 +264,7 @@ class CoNLL(Transform):
         """
 
         from supar.structs.fn import tarjan
+
         if proj and not cls.isprojective(sequence):
             return False
         n_roots = sum(head == 0 for head in sequence)
@@ -282,6 +310,7 @@ class CoNLL(Transform):
             left = [j for dep in adjs[head][:i] for j in order(adjs, dep)]
             right = [j for dep in adjs[head][i:] for j in order(adjs, dep)]
             return left + [head] + right
+
         return [i for head in adjs[0] for i in order(adjs, head)]
 
     @classmethod
@@ -303,12 +332,21 @@ class CoNLL(Transform):
 
         import hashlib
         import subprocess
-        file, fproj, malt = os.path.abspath(file), os.path.abspath(fproj), os.path.abspath(malt)
+
+        file, fproj, malt = (
+            os.path.abspath(file),
+            os.path.abspath(fproj),
+            os.path.abspath(malt),
+        )
         path, parser = os.path.dirname(malt), os.path.basename(malt)
-        cfg = hashlib.sha256(file.encode('ascii')).hexdigest()[:8]
-        subprocess.check_output([f"cd {path}; java -jar {parser} -c {cfg} -m proj -i {file} -o {fproj} -pp head"],
-                                stderr=subprocess.STDOUT,
-                                shell=True)
+        cfg = hashlib.sha256(file.encode("ascii")).hexdigest()[:8]
+        subprocess.check_output(
+            [
+                f"cd {path}; java -jar {parser} -c {cfg} -m proj -i {file} -o {fproj} -pp head"
+            ],
+            stderr=subprocess.STDOUT,
+            shell=True,
+        )
         return fproj
 
     @classmethod
@@ -318,7 +356,7 @@ class CoNLL(Transform):
         arcs: Iterable,
         rels: Iterable,
         data: str,
-        malt: str
+        malt: str,
     ) -> Tuple[Iterable, Iterable]:
         r"""
         Recover the projectivized sentences to the orginal format with MaltParser.
@@ -341,18 +379,32 @@ class CoNLL(Transform):
 
         import hashlib
         import subprocess
+
         data, malt = os.path.abspath(data), os.path.abspath(malt)
         path, parser = os.path.dirname(malt), os.path.basename(malt)
-        cfg = hashlib.sha256(data.encode('ascii')).hexdigest()[:8]
+        cfg = hashlib.sha256(data.encode("ascii")).hexdigest()[:8]
         with tempfile.TemporaryDirectory() as tdir:
-            fproj, file = os.path.join(tdir, 'proj.conll'), os.path.join(tdir, 'nonproj.conll')
-            with open(fproj, 'w') as f:
-                f.write('\n'.join([s.conll_format(arcs[i], rels[i]) for i, s in enumerate(sentences)]))
+            fproj, file = os.path.join(tdir, "proj.conll"), os.path.join(
+                tdir, "nonproj.conll"
+            )
+            with open(fproj, "w") as f:
+                f.write(
+                    "\n".join(
+                        [
+                            s.conll_format(arcs[i], rels[i])
+                            for i, s in enumerate(sentences)
+                        ]
+                    )
+                )
             # in cases when cfg files are deleted by new java executions
-            subprocess.check_output([f"cd {path}; if [ ! -f {cfg}.mco ]; then sleep 30; fi;"
-                                     f"java -jar {parser} -c {cfg} -m deproj -i {fproj} -o {file}"],
-                                    stderr=subprocess.STDOUT,
-                                    shell=True)
+            subprocess.check_output(
+                [
+                    f"cd {path}; if [ ! -f {cfg}.mco ]; then sleep 30; fi;"
+                    f"java -jar {parser} -c {cfg} -m deproj -i {fproj} -o {file}"
+                ],
+                stderr=subprocess.STDOUT,
+                shell=True,
+            )
             arcs, rels, sent = [], [], []
             with open(file) as f:
                 for line in f:
@@ -363,7 +415,7 @@ class CoNLL(Transform):
                         rels.append([line[7] for line in sent])
                         sent = []
                     else:
-                        sent.append(line.split('\t'))
+                        sent.append(line.split("\t"))
             return arcs, rels
 
     def load(
@@ -373,7 +425,7 @@ class CoNLL(Transform):
         proj: bool = False,
         malt: str = None,
         tokenizer: Tokenizer = None,
-        **kwargs
+        **kwargs,
     ) -> Iterable[CoNLLSentence]:
         r"""
         Loads the data in CoNLL-X format.
@@ -404,21 +456,35 @@ class CoNLL(Transform):
         with tempfile.TemporaryDirectory() as tdir:
             if isinstance(data, str) and os.path.exists(data):
                 f = open(data)
-                if data.endswith('.txt'):
-                    lines = (i
-                             for s in f
-                             if len(s) > 1
-                             for i in StringIO(self.toconll(s.split() if lang is None else tokenizer(s)) + '\n'))
+                if data.endswith(".txt"):
+                    lines = (
+                        i
+                        for s in f
+                        if len(s) > 1
+                        for i in StringIO(
+                            self.toconll(s.split() if lang is None else tokenizer(s))
+                            + "\n"
+                        )
+                    )
                 else:
                     if malt is not None:
-                        f = open(CoNLL.projectivize(data, os.path.join(tdir, f"{os.path.basename(data)}.proj"), malt))
+                        f = open(
+                            CoNLL.projectivize(
+                                data,
+                                os.path.join(tdir, f"{os.path.basename(data)}.proj"),
+                                malt,
+                            )
+                        )
                     lines, isconll = f, True
             else:
                 if lang is not None:
-                    data = [tokenizer(s) for s in ([data] if isinstance(data, str) else data)]
+                    data = [
+                        tokenizer(s)
+                        for s in ([data] if isinstance(data, str) else data)
+                    ]
                 else:
                     data = [data] if isinstance(data[0], str) else data
-                lines = (i for s in data for i in StringIO(self.toconll(s) + '\n'))
+                lines = (i for s in data for i in StringIO(self.toconll(s) + "\n"))
 
             index, sentence = 0, []
             for line in lines:
@@ -426,7 +492,9 @@ class CoNLL(Transform):
                 if len(line) == 0:
                     sentence = CoNLLSentence(self, sentence, index)
                     if isconll and self.training and proj and not sentence.projective:
-                        logger.warning(f"Sentence {index} is not projective. Discarding it!")
+                        logger.warning(
+                            f"Sentence {index} is not projective. Discarding it!"
+                        )
                     else:
                         yield sentence
                         index += 1
@@ -484,7 +552,9 @@ class CoNLLSentence(Sentence):
         12      .       _       _       _       _       3       punct   _       _
     """
 
-    def __init__(self, transform: CoNLL, lines: Sequence[str], index: Optional[int] = None) -> CoNLLSentence:
+    def __init__(
+        self, transform: CoNLL, lines: Sequence[str], index: Optional[int] = None
+    ) -> CoNLLSentence:
         super().__init__(transform, index)
 
         self.values = []
@@ -492,8 +562,8 @@ class CoNLLSentence(Sentence):
         self.annotations = dict()
 
         for i, line in enumerate(lines):
-            value = line.split('\t')
-            if value[0].startswith('#') or not value[0].isdigit():
+            value = line.split("\t")
+            if value[0].startswith("#") or not value[0].isdigit():
                 self.annotations[-i - 1] = line
             else:
                 self.annotations[len(self.values)] = line
@@ -513,7 +583,13 @@ class CoNLLSentence(Sentence):
         if rels is None:
             rels = self.values[7]
         # cover the raw lines
-        merged = {**self.annotations,
-                  **{i: '\t'.join(map(str, line))
-                     for i, line in enumerate(zip(*self.values[:6], arcs, rels, *self.values[8:]))}}
-        return '\n'.join(merged.values()) + '\n'
+        merged = {
+            **self.annotations,
+            **{
+                i: "\t".join(map(str, line))
+                for i, line in enumerate(
+                    zip(*self.values[:6], arcs, rels, *self.values[8:])
+                )
+            },
+        }
+        return "\n".join(merged.values()) + "\n"

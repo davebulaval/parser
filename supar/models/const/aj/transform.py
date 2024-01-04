@@ -41,7 +41,7 @@ class AttachJuxtaposeTree(Tree):
             ``NUL`` represents the `Attach` action.
     """
 
-    fields = ['WORD', 'POS', 'TREE', 'NODE', 'PARENT', 'NEW']
+    fields = ["WORD", "POS", "TREE", "NODE", "PARENT", "NEW"]
 
     def __init__(
         self,
@@ -50,7 +50,7 @@ class AttachJuxtaposeTree(Tree):
         TREE: Optional[Union[Field, Iterable[Field]]] = None,
         NODE: Optional[Union[Field, Iterable[Field]]] = None,
         PARENT: Optional[Union[Field, Iterable[Field]]] = None,
-        NEW: Optional[Union[Field, Iterable[Field]]] = None
+        NEW: Optional[Union[Field, Iterable[Field]]] = None,
     ) -> Tree:
         super().__init__()
 
@@ -140,13 +140,17 @@ class AttachJuxtaposeTree(Tree):
                 parent_label = NUL
             else:
                 last_subtree, last_pos = parent(last_pos), last_pos[:-1]
-                last_subtree_siblings = [] if isroot(last_subtree) else parent(last_pos)[:-1]
+                last_subtree_siblings = (
+                    [] if isroot(last_subtree) else parent(last_pos)[:-1]
+                )
                 parent_label = last_subtree.label()
 
             target_pos, new_label, last_tree = 0, NUL, tree
             if isroot(last_subtree):
                 last_tree = None
-            elif len(last_subtree_siblings) == 1 and not isterminal(last_subtree_siblings[0]):
+            elif len(last_subtree_siblings) == 1 and not isterminal(
+                last_subtree_siblings[0]
+            ):
                 new_label = parent(last_pos).label()
                 target = last_subtree_siblings[0]
                 last_grand = grand(last_pos)
@@ -161,6 +165,7 @@ class AttachJuxtaposeTree(Tree):
                 target_pos = len(last_pos) - 2
             action = target_pos, parent_label, new_label
             return action, last_tree
+
         if tree is None:
             return []
         action, last_tree = detach(tree)
@@ -171,7 +176,7 @@ class AttachJuxtaposeTree(Tree):
         cls,
         tree: nltk.Tree,
         actions: List[Tuple[int, str, str]],
-        join: str = '::',
+        join: str = "::",
     ) -> nltk.Tree:
         r"""
         Recovers a constituency tree from a sequence of AttachJuxtapose actions.
@@ -222,11 +227,15 @@ class AttachJuxtaposeTree(Tree):
         def parent(tree, position):
             return tree[position[:-1]]
 
-        def execute(tree: nltk.Tree, terminal: Tuple(str, str), action: Tuple[int, str, str]) -> nltk.Tree:
+        def execute(
+            tree: nltk.Tree, terminal: Tuple(str, str), action: Tuple[int, str, str]
+        ) -> nltk.Tree:
             new_leaf = nltk.Tree(terminal[1], [terminal[0]])
             target_pos, parent_label, new_label = action
             # create the subtree to be inserted
-            new_subtree = new_leaf if parent_label == NUL else nltk.Tree(parent_label, [new_leaf])
+            new_subtree = (
+                new_leaf if parent_label == NUL else nltk.Tree(parent_label, [new_leaf])
+            )
             # find the target position at which to insert the new subtree
             target_node = tree
             if target_node is not None:
@@ -272,7 +281,7 @@ class AttachJuxtaposeTree(Tree):
         action: torch.Tensor,
         spans: torch.Tensor = None,
         nul_index: int = -1,
-        mask: torch.BoolTensor = None
+        mask: torch.BoolTensor = None,
     ) -> torch.Tensor:
         r"""
         Converts a batch of the tensorized action at a given step into spans.
@@ -350,22 +359,27 @@ class AttachJuxtaposeTree(Tree):
         rightmost_mask = spans[..., -1].ge(0)
         ancestors = rightmost_mask.cumsum(-1).masked_fill_(~rightmost_mask, -1) - 1
         # should not include the target node for the Juxtapose action
-        ancestor_mask = mask.unsqueeze(-1) & ancestors.ge(0) & ancestors.le((target - juxtapose_mask.long()).unsqueeze(-1))
+        ancestor_mask = (
+            mask.unsqueeze(-1)
+            & ancestors.ge(0)
+            & ancestors.le((target - juxtapose_mask.long()).unsqueeze(-1))
+        )
         target_pos = torch.where(ancestors.eq(target.unsqueeze(-1))[juxtapose_mask])[-1]
         # the right boundaries of ancestor nodes should be aligned with the new generated terminals
-        spans = torch.cat((spans, torch.where(ancestor_mask, spans[..., -1], -1).unsqueeze(-1)), -1)
+        spans = torch.cat(
+            (spans, torch.where(ancestor_mask, spans[..., -1], -1).unsqueeze(-1)), -1
+        )
         spans[..., -2].masked_fill_(ancestor_mask, -1)
-        spans[juxtapose_mask, target_pos, -1] = new.masked_fill(new.eq(nul_index), -1)[juxtapose_mask]
+        spans[juxtapose_mask, target_pos, -1] = new.masked_fill(new.eq(nul_index), -1)[
+            juxtapose_mask
+        ]
         spans[mask, -1, -1] = parent.masked_fill(parent.eq(nul_index), -1)[mask]
         # [batch_size, seq_len+1, seq_len+1]
         spans = torch.cat((spans, torch.full_like(spans[:, :1], -1)), 1)
         return spans
 
     def load(
-        self,
-        data: Union[str, Iterable],
-        lang: Optional[str] = None,
-        **kwargs
+        self, data: Union[str, Iterable], lang: Optional[str] = None, **kwargs
     ) -> List[AttachJuxtaposeTreeSentence]:
         r"""
         Args:
@@ -383,23 +397,35 @@ class AttachJuxtaposeTree(Tree):
         if lang is not None:
             tokenizer = Tokenizer(lang)
         if isinstance(data, str) and os.path.exists(data):
-            if data.endswith('.txt'):
-                data = (s.split() if lang is None else tokenizer(s) for s in open(data) if len(s) > 1)
+            if data.endswith(".txt"):
+                data = (
+                    s.split() if lang is None else tokenizer(s)
+                    for s in open(data)
+                    if len(s) > 1
+                )
             else:
                 data = open(data)
         else:
             if lang is not None:
-                data = [tokenizer(i) for i in ([data] if isinstance(data, str) else data)]
+                data = [
+                    tokenizer(i) for i in ([data] if isinstance(data, str) else data)
+                ]
             else:
                 data = [data] if isinstance(data[0], str) else data
 
         index = 0
         for s in data:
             try:
-                tree = nltk.Tree.fromstring(s) if isinstance(s, str) else self.totree(s, self.root)
+                tree = (
+                    nltk.Tree.fromstring(s)
+                    if isinstance(s, str)
+                    else self.totree(s, self.root)
+                )
                 sentence = AttachJuxtaposeTreeSentence(self, tree, index)
             except ValueError:
-                logger.warning(f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!")
+                logger.warning(
+                    f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!"
+                )
                 continue
             else:
                 yield sentence
@@ -422,7 +448,7 @@ class AttachJuxtaposeTreeSentence(Sentence):
         self,
         transform: AttachJuxtaposeTree,
         tree: nltk.Tree,
-        index: Optional[int] = None
+        index: Optional[int] = None,
     ) -> AttachJuxtaposeTreeSentence:
         super().__init__(transform, index)
 
@@ -432,10 +458,10 @@ class AttachJuxtaposeTreeSentence(Sentence):
             oracle_tree = tree.copy(True)
             # the root node must have a unary chain
             if len(oracle_tree) > 1:
-                oracle_tree[:] = [nltk.Tree('*', oracle_tree)]
-            oracle_tree.collapse_unary(joinChar='::')
+                oracle_tree[:] = [nltk.Tree("*", oracle_tree)]
+            oracle_tree.collapse_unary(joinChar="::")
             if len(oracle_tree) == 1 and not isinstance(oracle_tree[0][0], nltk.Tree):
-                oracle_tree[0] = nltk.Tree('*', [oracle_tree[0]])
+                oracle_tree[0] = nltk.Tree("*", [oracle_tree[0]])
             nodes, parents, news = zip(*transform.tree2action(oracle_tree))
         self.values = [words, tags, tree, nodes, parents, news]
 

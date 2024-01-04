@@ -88,7 +88,7 @@ class Field(RawField):
         lower: bool = False,
         use_vocab: bool = True,
         tokenize: Optional[Callable] = None,
-        fn: Optional[Callable] = None
+        fn: Optional[Callable] = None,
     ) -> Field:
         self.name = name
         self.pad = pad
@@ -104,7 +104,7 @@ class Field(RawField):
 
     def __repr__(self):
         s, params = f"({self.name}): {self.__class__.__name__}(", []
-        if hasattr(self, 'vocab'):
+        if hasattr(self, "vocab"):
             params.append(f"vocab_size={len(self.vocab)}")
         if self.pad is not None:
             params.append(f"pad={self.pad}")
@@ -118,13 +118,13 @@ class Field(RawField):
             params.append(f"lower={self.lower}")
         if not self.use_vocab:
             params.append(f"use_vocab={self.use_vocab}")
-        return s + ', '.join(params) + ')'
+        return s + ", ".join(params) + ")"
 
     @property
     def pad_index(self):
         if self.pad is None:
             return 0
-        if hasattr(self, 'vocab'):
+        if hasattr(self, "vocab"):
             return self.vocab[self.pad]
         return self.specials.index(self.pad)
 
@@ -132,25 +132,25 @@ class Field(RawField):
     def unk_index(self):
         if self.unk is None:
             return 0
-        if hasattr(self, 'vocab'):
+        if hasattr(self, "vocab"):
             return self.vocab[self.unk]
         return self.specials.index(self.unk)
 
     @property
     def bos_index(self):
-        if hasattr(self, 'vocab'):
+        if hasattr(self, "vocab"):
             return self.vocab[self.bos]
         return self.specials.index(self.bos)
 
     @property
     def eos_index(self):
-        if hasattr(self, 'vocab'):
+        if hasattr(self, "vocab"):
             return self.vocab[self.eos]
         return self.specials.index(self.eos)
 
     @property
     def device(self):
-        return 'cuda' if torch.cuda.is_available() else 'cpu'
+        return "cuda" if torch.cuda.is_available() else "cpu"
 
     def preprocess(self, data: Union[str, Iterable]) -> Iterable:
         r"""
@@ -180,7 +180,7 @@ class Field(RawField):
         data: Union[Dataset, Iterable[Dataset]],
         min_freq: int = 1,
         embed: Optional[Embedding] = None,
-        norm: Callable = None
+        norm: Callable = None,
     ) -> Field:
         r"""
         Constructs a :class:`~supar.utils.vocab.Vocab` object for this field from one or more datasets.
@@ -198,17 +198,22 @@ class Field(RawField):
                 Callable function used for normalizing embedding weights. Default: ``None``.
         """
 
-        if hasattr(self, 'vocab'):
+        if hasattr(self, "vocab"):
             return
 
         @wait
         def build_vocab(data):
-            return Vocab(counter=Counter(token
-                                         for seq in progress_bar(getattr(data, self.name))
-                                         for token in self.preprocess(seq)),
-                         min_freq=min_freq,
-                         specials=self.specials,
-                         unk_index=self.unk_index)
+            return Vocab(
+                counter=Counter(
+                    token
+                    for seq in progress_bar(getattr(data, self.name))
+                    for token in self.preprocess(seq)
+                ),
+                min_freq=min_freq,
+                specials=self.specials,
+                unk_index=self.unk_index,
+            )
+
         if isinstance(data, Dataset):
             data = [data]
         self.vocab = build_vocab(data[0])
@@ -304,7 +309,7 @@ class SubwordField(Field):
     """
 
     def __init__(self, *args, **kwargs):
-        self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
+        self.fix_len = kwargs.pop("fix_len") if "fix_len" in kwargs else 0
         super().__init__(*args, **kwargs)
 
     def build(
@@ -312,20 +317,25 @@ class SubwordField(Field):
         data: Union[Dataset, Iterable[Dataset]],
         min_freq: int = 1,
         embed: Optional[Embedding] = None,
-        norm: Callable = None
+        norm: Callable = None,
     ) -> SubwordField:
-        if hasattr(self, 'vocab'):
+        if hasattr(self, "vocab"):
             return
 
         @wait
         def build_vocab(data):
-            return Vocab(counter=Counter(piece
-                                         for seq in progress_bar(getattr(data, self.name))
-                                         for token in seq
-                                         for piece in self.preprocess(token)),
-                         min_freq=min_freq,
-                         specials=self.specials,
-                         unk_index=self.unk_index)
+            return Vocab(
+                counter=Counter(
+                    piece
+                    for seq in progress_bar(getattr(data, self.name))
+                    for token in seq
+                    for piece in self.preprocess(token)
+                ),
+                min_freq=min_freq,
+                specials=self.specials,
+                unk_index=self.unk_index,
+            )
+
         if isinstance(data, Dataset):
             data = [data]
         self.vocab = build_vocab(data[0])
@@ -352,15 +362,24 @@ class SubwordField(Field):
         for seq in sequences:
             seq = [self.preprocess(token) for token in seq]
             if self.use_vocab:
-                seq = [[self.vocab[i] if i in self.vocab else self.unk_index for i in token] if token else [self.unk_index]
-                       for token in seq]
+                seq = [
+                    [
+                        self.vocab[i] if i in self.vocab else self.unk_index
+                        for i in token
+                    ]
+                    if token
+                    else [self.unk_index]
+                    for token in seq
+                ]
             if self.bos:
                 seq = [[self.bos_index]] + seq
             if self.eos:
                 seq = seq + [[self.eos_index]]
             if self.fix_len > 0:
-                seq = [ids[:self.fix_len] for ids in seq]
-            yield pad([torch.tensor(ids, dtype=torch.long) for ids in seq], self.pad_index)
+                seq = [ids[: self.fix_len] for ids in seq]
+            yield pad(
+                [torch.tensor(ids, dtype=torch.long) for ids in seq], self.pad_index
+            )
 
 
 class ChartField(Field):
@@ -384,19 +403,23 @@ class ChartField(Field):
     """
 
     def build(
-        self,
-        data: Union[Dataset, Iterable[Dataset]],
-        min_freq: int = 1
+        self, data: Union[Dataset, Iterable[Dataset]], min_freq: int = 1
     ) -> ChartField:
         @wait
         def build_vocab(data):
-            return Vocab(counter=Counter(i
-                                         for chart in progress_bar(getattr(data, self.name))
-                                         for row in self.preprocess(chart)
-                                         for i in row if i is not None),
-                         min_freq=min_freq,
-                         specials=self.specials,
-                         unk_index=self.unk_index)
+            return Vocab(
+                counter=Counter(
+                    i
+                    for chart in progress_bar(getattr(data, self.name))
+                    for row in self.preprocess(chart)
+                    for i in row
+                    if i is not None
+                ),
+                min_freq=min_freq,
+                specials=self.specials,
+                unk_index=self.unk_index,
+            )
+
         if isinstance(data, Dataset):
             data = [data]
         self.vocab = build_vocab(data[0])
@@ -408,9 +431,12 @@ class ChartField(Field):
         for chart in charts:
             chart = self.preprocess(chart)
             if self.use_vocab:
-                chart = [[self.vocab[i] if i is not None else -1 for i in row] for row in chart]
+                chart = [
+                    [self.vocab[i] if i is not None else -1 for i in row]
+                    for row in chart
+                ]
             if self.bos:
-                chart = [[self.bos_index]*len(chart[0])] + chart
+                chart = [[self.bos_index] * len(chart[0])] + chart
             if self.eos:
-                chart = chart + [[self.eos_index]*len(chart[0])]
+                chart = chart + [[self.eos_index] * len(chart[0])]
             yield torch.tensor(chart, dtype=torch.long)

@@ -94,47 +94,59 @@ class CRFConstituencyModel(Model):
         https://github.com/huggingface/transformers
     """
 
-    def __init__(self,
-                 n_words,
-                 n_labels,
-                 n_tags=None,
-                 n_chars=None,
-                 encoder='lstm',
-                 feat=['char'],
-                 n_embed=100,
-                 n_pretrained=100,
-                 n_feat_embed=100,
-                 n_char_embed=50,
-                 n_char_hidden=100,
-                 char_pad_index=0,
-                 elmo='original_5b',
-                 elmo_bos_eos=(True, True),
-                 bert=None,
-                 n_bert_layers=4,
-                 mix_dropout=.0,
-                 bert_pooling='mean',
-                 bert_pad_index=0,
-                 finetune=False,
-                 n_plm_embed=0,
-                 embed_dropout=.33,
-                 n_encoder_hidden=800,
-                 n_encoder_layers=3,
-                 encoder_dropout=.33,
-                 n_span_mlp=500,
-                 n_label_mlp=100,
-                 mlp_dropout=.33,
-                 pad_index=0,
-                 unk_index=1,
-                 **kwargs):
+    def __init__(
+        self,
+        n_words,
+        n_labels,
+        n_tags=None,
+        n_chars=None,
+        encoder="lstm",
+        feat=["char"],
+        n_embed=100,
+        n_pretrained=100,
+        n_feat_embed=100,
+        n_char_embed=50,
+        n_char_hidden=100,
+        char_pad_index=0,
+        elmo="original_5b",
+        elmo_bos_eos=(True, True),
+        bert=None,
+        n_bert_layers=4,
+        mix_dropout=0.0,
+        bert_pooling="mean",
+        bert_pad_index=0,
+        finetune=False,
+        n_plm_embed=0,
+        embed_dropout=0.33,
+        n_encoder_hidden=800,
+        n_encoder_layers=3,
+        encoder_dropout=0.33,
+        n_span_mlp=500,
+        n_label_mlp=100,
+        mlp_dropout=0.33,
+        pad_index=0,
+        unk_index=1,
+        **kwargs
+    ):
         super().__init__(**Config().update(locals()))
 
-        self.span_mlp_l = MLP(n_in=self.args.n_encoder_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
-        self.span_mlp_r = MLP(n_in=self.args.n_encoder_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
-        self.label_mlp_l = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
-        self.label_mlp_r = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
+        self.span_mlp_l = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_span_mlp, dropout=mlp_dropout
+        )
+        self.span_mlp_r = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_span_mlp, dropout=mlp_dropout
+        )
+        self.label_mlp_l = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=mlp_dropout
+        )
+        self.label_mlp_r = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=mlp_dropout
+        )
 
         self.span_attn = Biaffine(n_in=n_span_mlp, bias_x=True, bias_y=False)
-        self.label_attn = Biaffine(n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True)
+        self.label_attn = Biaffine(
+            n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True
+        )
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, words, feats=None):
@@ -218,4 +230,7 @@ class CRFConstituencyModel(Model):
 
         span_preds = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).argmax
         label_preds = s_label.argmax(-1).tolist()
-        return [[(i, j, labels[i][j]) for i, j in spans] for spans, labels in zip(span_preds, label_preds)]
+        return [
+            [(i, j, labels[i][j]) for i, j in spans]
+            for spans, labels in zip(span_preds, label_preds)
+        ]

@@ -19,7 +19,7 @@ class VIDependencyParser(BiaffineDependencyParser):
     The implementation of Dependency Parser using Variational Inference :cite:`wang-tu-2020-second`.
     """
 
-    NAME = 'vi-dependency'
+    NAME = "vi-dependency"
     MODEL = VIDependencyModel
 
     def __init__(self, *args, **kwargs):
@@ -99,12 +99,19 @@ class VIDependencyParser(BiaffineDependencyParser):
         mask[:, 0] = 0
         s_arc, s_sib, s_rel = self.model(words, feats)
         loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
-        arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
+        arc_preds, rel_preds = self.model.decode(
+            s_arc, s_rel, mask, self.args.tree, self.args.proj
+        )
         if self.args.partial:
             mask &= arcs.ge(0)
         # ignore all punctuation if not specified
         if not self.args.punct:
-            mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
+            mask.masked_scatter_(
+                mask,
+                ~mask.new_tensor(
+                    [ispunct(w) for s in batch.sentences for w in s.words]
+                ),
+            )
         return AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
 
     @torch.no_grad()
@@ -115,9 +122,13 @@ class VIDependencyParser(BiaffineDependencyParser):
         mask[:, 0] = 0
         s_arc, s_sib, s_rel = self.model(words, feats)
         s_arc = self.model.inference((s_arc, s_sib), mask)
-        arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
+        arc_preds, rel_preds = self.model.decode(
+            s_arc, s_rel, mask, self.args.tree, self.args.proj
+        )
         batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
         batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
         if self.args.prob:
-            batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, s_arc.unbind())]
+            batch.probs = [
+                prob[1 : i + 1, : i + 1].cpu() for i, prob in zip(lens, s_arc.unbind())
+            ]
         return batch

@@ -27,7 +27,13 @@ class Vocab(object):
             A :class:`~collections.defaultdict` object mapping token strings to numerical identifiers.
     """
 
-    def __init__(self, counter: Counter, min_freq: int = 1, specials: Tuple = tuple(), unk_index: int = 0) -> Vocab:
+    def __init__(
+        self,
+        counter: Counter,
+        min_freq: int = 1,
+        specials: Tuple = tuple(),
+        unk_index: int = 0,
+    ) -> Vocab:
         self.itos = list(specials)
         self.stoi = defaultdict(lambda: unk_index)
         self.stoi.update({token: i for i, token in enumerate(self.itos)})
@@ -55,13 +61,13 @@ class Vocab(object):
         # avoid picking defaultdict
         attrs = dict(self.__dict__)
         # cast to regular dict
-        attrs['stoi'] = dict(self.stoi)
+        attrs["stoi"] = dict(self.stoi)
         return attrs
 
     def __setstate__(self, state):
         stoi = defaultdict(lambda: self.unk_index)
-        stoi.update(state['stoi'])
-        state['stoi'] = stoi
+        stoi.update(state["stoi"])
+        state["stoi"] = stoi
         self.__dict__.update(state)
 
     def items(self):

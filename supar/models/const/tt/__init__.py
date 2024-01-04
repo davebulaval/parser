@@ -3,4 +3,4 @@
 from .model import TetraTaggingConstituencyModel
 from .parser import TetraTaggingConstituencyParser
 
-__all__ = ['TetraTaggingConstituencyModel', 'TetraTaggingConstituencyParser']
+__all__ = ["TetraTaggingConstituencyModel", "TetraTaggingConstituencyParser"]

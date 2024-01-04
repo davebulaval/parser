@@ -37,7 +37,7 @@ class Transform(object):
         return len(self.fields)
 
     def __repr__(self):
-        s = '\n' + '\n'.join([f" {f}" for f in self.flattened_fields]) + '\n'
+        s = "\n" + "\n".join([f" {f}" for f in self.flattened_fields]) + "\n"
         return f"{self.__class__.__name__}({s})"
 
     def __call__(self, sentences: Iterable[Sentence]) -> Iterable[Sentence]:
@@ -81,7 +81,6 @@ class Transform(object):
 
 
 class Batch(object):
-
     def __init__(self, sentences: Iterable[Sentence]) -> Batch:
         self.sentences = sentences
         self.names, self.fields = [], {}
@@ -99,7 +98,7 @@ class Batch(object):
         return [s.fields[name] for s in self.sentences]
 
     def __setattr__(self, name: str, value: Iterable[Any]):
-        if name not in ('sentences', 'fields', 'names'):
+        if name not in ("sentences", "fields", "names"):
             for s, v in zip(self.sentences, value):
                 setattr(s, name, v)
         else:
@@ -113,11 +112,13 @@ class Batch(object):
 
     @property
     def device(self):
-        return 'cuda' if torch.cuda.is_available() else 'cpu'
+        return "cuda" if torch.cuda.is_available() else "cpu"
 
     @lazy_property
     def lens(self):
-        return torch.tensor([len(i) for i in self.sentences]).to(self.device, non_blocking=True)
+        return torch.tensor([len(i) for i in self.sentences]).to(
+            self.device, non_blocking=True
+        )
 
     @lazy_property
     def mask(self):
@@ -133,8 +134,12 @@ class Batch(object):
         if batch_size is None:
             batch_size = len(self) // 2
         if batch_size <= 0:
-            raise RuntimeError(f"The batch has only {len(self)} sentences and can't be shrinked!")
-        return Batch([self.sentences[i] for i in torch.randperm(len(self))[:batch_size].tolist()])
+            raise RuntimeError(
+                f"The batch has only {len(self)} sentences and can't be shrinked!"
+            )
+        return Batch(
+            [self.sentences[i] for i in torch.randperm(len(self))[:batch_size].tolist()]
+        )
 
     def pin_memory(self):
         for s in self.sentences:
@@ -145,7 +150,6 @@ class Batch(object):
 
 
 class Sentence(object):
-
     def __init__(self, transform, index: Optional[int] = None) -> Sentence:
         self.index = index
         # mapping from each nested field to their proper position
@@ -169,7 +173,7 @@ class Sentence(object):
         raise AttributeError(f"`{name}` not found")
 
     def __setattr__(self, name, value):
-        if 'fields' in self.__dict__ and name in self:
+        if "fields" in self.__dict__ and name in self:
             index = self.maps[name]
             if index >= len(self.values):
                 self.__dict__[name] = value
@@ -180,22 +184,26 @@ class Sentence(object):
 
     def __getstate__(self):
         state = vars(self)
-        if 'fields' in state:
-            state['fields'] = {
-                name: ((value.dtype, value.tolist())
-                       if isinstance(value, torch.Tensor)
-                       else value)
-                for name, value in state['fields'].items()
+        if "fields" in state:
+            state["fields"] = {
+                name: (
+                    (value.dtype, value.tolist())
+                    if isinstance(value, torch.Tensor)
+                    else value
+                )
+                for name, value in state["fields"].items()
             }
         return state
 
     def __setstate__(self, state):
-        if 'fields' in state:
-            state['fields'] = {
-                name: (torch.tensor(value[1], dtype=value[0])
-                       if isinstance(value, tuple) and isinstance(value[0], torch.dtype)
-                       else value)
-                for name, value in state['fields'].items()
+        if "fields" in state:
+            state["fields"] = {
+                name: (
+                    torch.tensor(value[1], dtype=value[0])
+                    if isinstance(value, tuple) and isinstance(value[0], torch.dtype)
+                    else value
+                )
+                for name, value in state["fields"].items()
             }
             self.__dict__.update(state)
 
@@ -223,21 +231,23 @@ class Sentence(object):
                 buf, dtype = value.numpy().tobytes(), value.dtype
                 self.fields[name] = (len(buf), dtype)
                 bufs.append(buf)
-        buf, sentence = b''.join(bufs), pickle.dumps(self)
+        buf, sentence = b"".join(bufs), pickle.dumps(self)
         for name, value in fields.items():
             self.fields[name] = value
-        return buf + sentence + struct.pack('LL', len(buf), len(sentence))
+        return buf + sentence + struct.pack("LL", len(buf), len(sentence))
 
     @classmethod
     def frombuffer(cls, buf: bytes) -> Sentence:
         mm = BytesIO(buf)
-        mm.seek(-len(struct.pack('LL', 0, 0)), os.SEEK_END)
-        offset, length = struct.unpack('LL', mm.read())
+        mm.seek(-len(struct.pack("LL", 0, 0)), os.SEEK_END)
+        offset, length = struct.unpack("LL", mm.read())
         mm.seek(offset)
         sentence = pickle.loads(mm.read(length))
         mm.seek(0)
         for name, value in sentence.fields.items():
             if isinstance(value, tuple) and isinstance(value[1], torch.dtype):
                 length, dtype = value
-                sentence.fields[name] = torch.frombuffer(bytearray(mm.read(length)), dtype=dtype)
+                sentence.fields[name] = torch.frombuffer(
+                    bytearray(mm.read(length)), dtype=dtype
+                )
         return sentence

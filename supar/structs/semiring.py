@@ -152,7 +152,6 @@ def KMaxSemiring(k):
     """
 
     class KMaxSemiring(LogSemiring):
-
         @classmethod
         def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
             return x.unsqueeze(-1).max(y.unsqueeze(-2)).flatten(-2).topk(k, -1)[0]
@@ -167,11 +166,17 @@ def KMaxSemiring(k):
 
         @classmethod
         def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-            return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+            return torch.stack(
+                list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))),
+                dim,
+            )
 
         @classmethod
         def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-            return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+            return torch.stack(
+                list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))),
+                dim,
+            )
 
         @classmethod
         def one_(cls, x: torch.Tensor) -> torch.Tensor:
@@ -181,7 +186,9 @@ def KMaxSemiring(k):
 
         @classmethod
         def convert(cls, x: torch.Tensor) -> torch.Tensor:
-            return torch.cat((x.unsqueeze(-1), cls.zero_(x.new_empty(*x.shape, k - 1))), -1)
+            return torch.cat(
+                (x.unsqueeze(-1), cls.zero_(x.new_empty(*x.shape, k - 1))), -1
+            )
 
     return KMaxSemiring
 
@@ -199,7 +206,9 @@ class ExpectationSemiring(Semiring):
 
     @classmethod
     def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return torch.stack((x[..., 0] * y[..., 0], x[..., 0] * y[..., 1] + x[..., 1] * y[..., 0]), -1)
+        return torch.stack(
+            (x[..., 0] * y[..., 0], x[..., 0] * y[..., 1] + x[..., 1] * y[..., 0]), -1
+        )
 
     @classmethod
     def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
@@ -207,11 +216,15 @@ class ExpectationSemiring(Semiring):
 
     @classmethod
     def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim
+        )
 
     @classmethod
     def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim
+        )
 
     @classmethod
     def zero_(cls, x: torch.Tensor) -> torch.Tensor:
@@ -244,11 +257,15 @@ class EntropySemiring(LogSemiring):
 
     @classmethod
     def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim
+        )
 
     @classmethod
     def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim
+        )
 
     @classmethod
     def zero_(cls, x: torch.Tensor) -> torch.Tensor:
@@ -289,11 +306,15 @@ class CrossEntropySemiring(LogSemiring):
 
     @classmethod
     def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim
+        )
 
     @classmethod
     def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim
+        )
 
     @classmethod
     def zero_(cls, x: torch.Tensor) -> torch.Tensor:
@@ -334,11 +355,15 @@ class KLDivergenceSemiring(LogSemiring):
 
     @classmethod
     def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim
+        )
 
     @classmethod
     def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim
+        )
 
     @classmethod
     def zero_(cls, x: torch.Tensor) -> torch.Tensor:
@@ -375,11 +400,15 @@ class SampledSemiring(LogSemiring):
 
     @classmethod
     def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim
+        )
 
     @classmethod
     def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim
+        )
 
 
 class SparsemaxSemiring(LogSemiring):
@@ -399,8 +428,12 @@ class SparsemaxSemiring(LogSemiring):
 
     @classmethod
     def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim
+        )
 
     @classmethod
     def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+        return torch.stack(
+            list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim
+        )

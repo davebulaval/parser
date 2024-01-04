@@ -38,7 +38,7 @@ class CharLSTM(nn.Module):
         n_hidden: int,
         n_out: int = 0,
         pad_index: int = 0,
-        dropout: float = 0
+        dropout: float = 0,
     ) -> CharLSTM:
         super().__init__()
 
@@ -49,9 +49,18 @@ class CharLSTM(nn.Module):
         self.pad_index = pad_index
 
         self.embed = nn.Embedding(num_embeddings=n_chars, embedding_dim=n_embed)
-        self.lstm = nn.LSTM(input_size=n_embed, hidden_size=n_hidden//2, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(
+            input_size=n_embed,
+            hidden_size=n_hidden // 2,
+            batch_first=True,
+            bidirectional=True,
+        )
         self.dropout = nn.Dropout(p=dropout)
-        self.projection = nn.Linear(in_features=n_hidden, out_features=self.n_out) if n_hidden != self.n_out else nn.Identity()
+        self.projection = (
+            nn.Linear(in_features=n_hidden, out_features=self.n_out)
+            if n_hidden != self.n_out
+            else nn.Identity()
+        )
 
     def __repr__(self):
         s = f"{self.n_chars}, {self.n_embed}"
@@ -88,7 +97,9 @@ class CharLSTM(nn.Module):
         # [n, fix_len, n_out]
         h = self.projection(h)
         # [batch_size, seq_len, n_out]
-        return h.new_zeros(*lens.shape, self.n_out).masked_scatter_(char_mask.unsqueeze(-1), h)
+        return h.new_zeros(*lens.shape, self.n_out).masked_scatter_(
+            char_mask.unsqueeze(-1), h
+        )
 
 
 class VariationalLSTM(nn.Module):
@@ -121,7 +132,7 @@ class VariationalLSTM(nn.Module):
         hidden_size: int,
         num_layers: int = 1,
         bidirectional: bool = False,
-        dropout: float = .0
+        dropout: float = 0.0,
     ) -> VariationalLSTM:
         super().__init__()
 
@@ -136,9 +147,13 @@ class VariationalLSTM(nn.Module):
         if bidirectional:
             self.b_cells = nn.ModuleList()
         for _ in range(self.num_layers):
-            self.f_cells.append(nn.LSTMCell(input_size=input_size, hidden_size=hidden_size))
+            self.f_cells.append(
+                nn.LSTMCell(input_size=input_size, hidden_size=hidden_size)
+            )
             if bidirectional:
-                self.b_cells.append(nn.LSTMCell(input_size=input_size, hidden_size=hidden_size))
+                self.b_cells.append(
+                    nn.LSTMCell(input_size=input_size, hidden_size=hidden_size)
+                )
             input_size = hidden_size * self.num_directions
 
         self.reset_parameters()
@@ -163,9 +178,7 @@ class VariationalLSTM(nn.Module):
                 nn.init.zeros_(param)
 
     def permute_hidden(
-        self,
-        hx: Tuple[torch.Tensor, torch.Tensor],
-        permutation: torch.LongTensor
+        self, hx: Tuple[torch.Tensor, torch.Tensor], permutation: torch.LongTensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if permutation is None:
             return hx
@@ -177,7 +190,7 @@ class VariationalLSTM(nn.Module):
         hx: Tuple[torch.Tensor, torch.Tensor],
         cell: nn.LSTMCell,
         batch_sizes: List[int],
-        reverse: bool = False
+        reverse: bool = False,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         hx_0 = hx_i = hx
         hx_n, output = [], []
@@ -188,7 +201,10 @@ class VariationalLSTM(nn.Module):
         for t in steps:
             last_batch_size, batch_size = len(hx_i[0]), batch_sizes[t]
             if last_batch_size < batch_size:
-                hx_i = [torch.cat((h, ih[last_batch_size:batch_size])) for h, ih in zip(hx_i, hx_0)]
+                hx_i = [
+                    torch.cat((h, ih[last_batch_size:batch_size]))
+                    for h, ih in zip(hx_i, hx_0)
+                ]
             else:
                 hx_n.append([h[batch_size:] for h in hx_i])
                 hx_i = [h[:batch_size] for h in hx_i]
@@ -209,7 +225,7 @@ class VariationalLSTM(nn.Module):
     def forward(
         self,
         sequence: PackedSequence,
-        hx: Optional[Tuple[torch.Tensor, torch.Tensor]] = None
+        hx: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
     ) -> Tuple[PackedSequence, Tuple[torch.Tensor, torch.Tensor]]:
         r"""
         Args:
@@ -238,7 +254,9 @@ class VariationalLSTM(nn.Module):
         h_n, c_n = [], []
 
         if hx is None:
-            ih = x.new_zeros(self.num_layers * self.num_directions, batch_size, self.hidden_size)
+            ih = x.new_zeros(
+                self.num_layers * self.num_directions, batch_size, self.hidden_size
+            )
             h, c = ih, ih
         else:
             h, c = self.permute_hidden(hx, sequence.sorted_indices)
@@ -249,10 +267,14 @@ class VariationalLSTM(nn.Module):
             x = torch.split(x, batch_sizes)
             if self.training:
                 mask = SharedDropout.get_mask(x[0], self.dropout)
-                x = [i * mask[:len(i)] for i in x]
-            x_i, (h_i, c_i) = self.layer_forward(x, (h[i, 0], c[i, 0]), self.f_cells[i], batch_sizes)
+                x = [i * mask[: len(i)] for i in x]
+            x_i, (h_i, c_i) = self.layer_forward(
+                x, (h[i, 0], c[i, 0]), self.f_cells[i], batch_sizes
+            )
             if self.bidirectional:
-                x_b, (h_b, c_b) = self.layer_forward(x, (h[i, 1], c[i, 1]), self.b_cells[i], batch_sizes, True)
+                x_b, (h_b, c_b) = self.layer_forward(
+                    x, (h[i, 1], c[i, 1]), self.b_cells[i], batch_sizes, True
+                )
                 x_i = torch.cat((x_i, x_b), -1)
                 h_i = torch.stack((h_i, h_b))
                 c_i = torch.stack((c_i, c_b))
@@ -260,7 +282,9 @@ class VariationalLSTM(nn.Module):
             h_n.append(h_i)
             c_n.append(c_i)
 
-        x = PackedSequence(x, sequence.batch_sizes, sequence.sorted_indices, sequence.unsorted_indices)
+        x = PackedSequence(
+            x, sequence.batch_sizes, sequence.sorted_indices, sequence.unsorted_indices
+        )
         hx = torch.cat(h_n, 0), torch.cat(c_n, 0)
         hx = self.permute_hidden(hx, sequence.unsorted_indices)
 

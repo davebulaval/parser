@@ -20,7 +20,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
     The implementation of first-order CRF Dependency Parser :cite:`zhang-etal-2020-efficient`.
     """
 
-    NAME = 'crf-dependency'
+    NAME = "crf-dependency"
     MODEL = CRFDependencyModel
 
     def __init__(self, *args, **kwargs):
@@ -92,7 +92,9 @@ class CRFDependencyParser(BiaffineDependencyParser):
         # ignore the first token of each sentence
         mask[:, 0] = 0
         s_arc, s_rel = self.model(words, feats)
-        loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
+        loss, s_arc = self.model.loss(
+            s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial
+        )
         return loss
 
     @torch.no_grad()
@@ -102,13 +104,22 @@ class CRFDependencyParser(BiaffineDependencyParser):
         # ignore the first token of each sentence
         mask[:, 0] = 0
         s_arc, s_rel = self.model(words, feats)
-        loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
-        arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
+        loss, s_arc = self.model.loss(
+            s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial
+        )
+        arc_preds, rel_preds = self.model.decode(
+            s_arc, s_rel, mask, self.args.tree, self.args.proj
+        )
         if self.args.partial:
             mask &= arcs.ge(0)
         # ignore all punctuation if not specified
         if not self.args.punct:
-            mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
+            mask.masked_scatter_(
+                mask,
+                ~mask.new_tensor(
+                    [ispunct(w) for s in batch.sentences for w in s.words]
+                ),
+            )
         return AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
 
     @torch.no_grad()
@@ -120,11 +131,16 @@ class CRFDependencyParser(BiaffineDependencyParser):
         mask[:, 0] = 0
         s_arc, s_rel = self.model(words, feats)
         s_arc = CRF(s_arc, lens).marginals if self.args.mbr else s_arc
-        arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
+        arc_preds, rel_preds = self.model.decode(
+            s_arc, s_rel, mask, self.args.tree, self.args.proj
+        )
         lens = lens.tolist()
         batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
         batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
         if self.args.prob:
             arc_probs = s_arc if self.args.mbr else s_arc.softmax(-1)
-            batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())]
+            batch.probs = [
+                prob[1 : i + 1, : i + 1].cpu()
+                for i, prob in zip(lens, arc_probs.unbind())
+            ]
         return batch

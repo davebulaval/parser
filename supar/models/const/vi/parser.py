@@ -19,7 +19,7 @@ class VIConstituencyParser(CRFConstituencyParser):
     The implementation of Constituency Parser using variational inference.
     """
 
-    NAME = 'vi-constituency'
+    NAME = "vi-constituency"
     MODEL = VIConstituencyModel
 
     def train(
@@ -31,9 +31,12 @@ class VIConstituencyParser(CRFConstituencyParser):
         patience: int = 100,
         batch_size: int = 5000,
         update_steps: int = 1,
-        buckets: int = 32, workers: int = 0, amp: bool = False, cache: bool = False,
-        delete: Set = {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
-        equal: Dict = {'ADVP': 'PRT'},
+        buckets: int = 32,
+        workers: int = 0,
+        amp: bool = False,
+        cache: bool = False,
+        delete: Set = {"TOP", "S1", "-NONE-", ",", ":", "``", "''", ".", "?", "!", ""},
+        equal: Dict = {"ADVP": "PRT"},
         verbose: bool = True,
         **kwargs
     ):
@@ -47,8 +50,8 @@ class VIConstituencyParser(CRFConstituencyParser):
         workers: int = 0,
         amp: bool = False,
         cache: bool = False,
-        delete: Set = {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
-        equal: Dict = {'ADVP': 'PRT'},
+        delete: Set = {"TOP", "S1", "-NONE-", ",", ":", "``", "''", ".", "?", "!", ""},
+        equal: Dict = {"ADVP": "PRT"},
         verbose: bool = True,
         **kwargs
     ):
@@ -86,11 +89,15 @@ class VIConstituencyParser(CRFConstituencyParser):
         s_span, s_pair, s_label = self.model(words, feats)
         loss, s_span = self.model.loss(s_span, s_pair, s_label, charts, mask)
         chart_preds = self.model.decode(s_span, s_label, mask)
-        preds = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
-                 for tree, chart in zip(trees, chart_preds)]
-        return SpanMetric(loss,
-                          [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
-                          [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in trees])
+        preds = [
+            Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
+            for tree, chart in zip(trees, chart_preds)
+        ]
+        return SpanMetric(
+            loss,
+            [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
+            [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in trees],
+        )
 
     @torch.no_grad()
     def pred_step(self, batch: Batch) -> Batch:
@@ -100,8 +107,10 @@ class VIConstituencyParser(CRFConstituencyParser):
         s_span, s_pair, s_label = self.model(words, feats)
         s_span = self.model.inference((s_span, s_pair), mask)
         chart_preds = self.model.decode(s_span, s_label, mask)
-        batch.trees = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
-                       for tree, chart in zip(trees, chart_preds)]
+        batch.trees = [
+            Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
+            for tree, chart in zip(trees, chart_preds)
+        ]
         if self.args.prob:
-            batch.probs = [prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)]
+            batch.probs = [prob[: i - 1, 1:i].cpu() for i, prob in zip(lens, s_span)]
         return batch

@@ -6,8 +6,7 @@ from supar.config import Config
 from supar.models.dep.biaffine.model import BiaffineDependencyModel
 from supar.models.dep.biaffine.transform import CoNLL
 from supar.modules import MLP, Biaffine, Triaffine
-from supar.structs import (DependencyCRF, DependencyLBP, DependencyMFVI,
-                           MatrixTree)
+from supar.structs import DependencyCRF, DependencyLBP, DependencyMFVI, MatrixTree
 from supar.utils.common import MIN
 
 
@@ -106,56 +105,74 @@ class VIDependencyModel(BiaffineDependencyModel):
         https://github.com/huggingface/transformers
     """
 
-    def __init__(self,
-                 n_words,
-                 n_rels,
-                 n_tags=None,
-                 n_chars=None,
-                 encoder='lstm',
-                 feat=['char'],
-                 n_embed=100,
-                 n_pretrained=100,
-                 n_feat_embed=100,
-                 n_char_embed=50,
-                 n_char_hidden=100,
-                 char_pad_index=0,
-                 elmo='original_5b',
-                 elmo_bos_eos=(True, False),
-                 bert=None,
-                 n_bert_layers=4,
-                 mix_dropout=.0,
-                 bert_pooling='mean',
-                 bert_pad_index=0,
-                 finetune=False,
-                 n_plm_embed=0,
-                 embed_dropout=.33,
-                 n_encoder_hidden=800,
-                 n_encoder_layers=3,
-                 encoder_dropout=.33,
-                 n_arc_mlp=500,
-                 n_sib_mlp=100,
-                 n_rel_mlp=100,
-                 mlp_dropout=.33,
-                 scale=0,
-                 inference='mfvi',
-                 max_iter=3,
-                 pad_index=0,
-                 unk_index=1,
-                 **kwargs):
+    def __init__(
+        self,
+        n_words,
+        n_rels,
+        n_tags=None,
+        n_chars=None,
+        encoder="lstm",
+        feat=["char"],
+        n_embed=100,
+        n_pretrained=100,
+        n_feat_embed=100,
+        n_char_embed=50,
+        n_char_hidden=100,
+        char_pad_index=0,
+        elmo="original_5b",
+        elmo_bos_eos=(True, False),
+        bert=None,
+        n_bert_layers=4,
+        mix_dropout=0.0,
+        bert_pooling="mean",
+        bert_pad_index=0,
+        finetune=False,
+        n_plm_embed=0,
+        embed_dropout=0.33,
+        n_encoder_hidden=800,
+        n_encoder_layers=3,
+        encoder_dropout=0.33,
+        n_arc_mlp=500,
+        n_sib_mlp=100,
+        n_rel_mlp=100,
+        mlp_dropout=0.33,
+        scale=0,
+        inference="mfvi",
+        max_iter=3,
+        pad_index=0,
+        unk_index=1,
+        **kwargs
+    ):
         super().__init__(**Config().update(locals()))
 
-        self.arc_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
-        self.arc_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
-        self.sib_mlp_s = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.sib_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.sib_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.rel_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
-        self.rel_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
+        self.arc_mlp_d = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout
+        )
+        self.arc_mlp_h = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout
+        )
+        self.sib_mlp_s = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout
+        )
+        self.sib_mlp_d = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout
+        )
+        self.sib_mlp_h = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout
+        )
+        self.rel_mlp_d = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout
+        )
+        self.rel_mlp_h = MLP(
+            n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout
+        )
 
         self.arc_attn = Biaffine(n_in=n_arc_mlp, scale=scale, bias_x=True, bias_y=False)
         self.sib_attn = Triaffine(n_in=n_sib_mlp, scale=scale, bias_x=True, bias_y=True)
         self.rel_attn = Biaffine(n_in=n_rel_mlp, n_out=n_rels, bias_x=True, bias_y=True)
-        self.inference = (DependencyMFVI if inference == 'mfvi' else DependencyLBP)(max_iter)
+        self.inference = (DependencyMFVI if inference == "mfvi" else DependencyLBP)(
+            max_iter
+        )
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, words, feats=None):
@@ -177,7 +194,11 @@ class VIDependencyModel(BiaffineDependencyModel):
         """
 
         x = self.encode(words, feats)
-        mask = words.ne(self.args.pad_index) if len(words.shape) < 3 else words.ne(self.args.pad_index).any(-1)
+        mask = (
+            words.ne(self.args.pad_index)
+            if len(words.shape) < 3
+            else words.ne(self.args.pad_index).any(-1)
+        )
 
         arc_d = self.arc_mlp_d(x)
         arc_h = self.arc_mlp_h(x)
@@ -245,9 +266,14 @@ class VIDependencyModel(BiaffineDependencyModel):
 
         lens = mask.sum(1)
         arc_preds = s_arc.argmax(-1)
-        bad = [not CoNLL.istree(seq[1:i+1], proj) for i, seq in zip(lens.tolist(), arc_preds.tolist())]
+        bad = [
+            not CoNLL.istree(seq[1 : i + 1], proj)
+            for i, seq in zip(lens.tolist(), arc_preds.tolist())
+        ]
         if tree and any(bad):
-            arc_preds[bad] = (DependencyCRF if proj else MatrixTree)(s_arc[bad], mask[bad].sum(-1)).argmax
+            arc_preds[bad] = (DependencyCRF if proj else MatrixTree)(
+                s_arc[bad], mask[bad].sum(-1)
+            ).argmax
         rel_preds = s_rel.argmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds

@@ -3,4 +3,4 @@
 from .model import CRFConstituencyModel
 from .parser import CRFConstituencyParser
 
-__all__ = ['CRFConstituencyModel', 'CRFConstituencyParser']
+__all__ = ["CRFConstituencyModel", "CRFConstituencyParser"]

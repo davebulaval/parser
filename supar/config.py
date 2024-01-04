@@ -16,7 +16,6 @@ from supar.utils.fn import download
 
 
 class Config(object):
-
     def __init__(self, **kwargs: Any) -> None:
         super(Config, self).__init__()
 
@@ -41,8 +40,13 @@ class Config(object):
     def primitive_config(self) -> Dict[str, Any]:
         from enum import Enum
         from pathlib import Path
+
         primitive_types = (int, float, bool, str, bytes, Enum, Path)
-        return {name: value for name, value in self.__dict__.items() if type(value) in primitive_types}
+        return {
+            name: value
+            for name, value in self.__dict__.items()
+            if type(value) in primitive_types
+        }
 
     def keys(self) -> Any:
         return self.__dict__.keys()
@@ -51,9 +55,9 @@ class Config(object):
         return self.__dict__.items()
 
     def update(self, kwargs: Dict[str, Any]) -> Config:
-        for key in ('self', 'cls', '__class__'):
+        for key in ("self", "cls", "__class__"):
             kwargs.pop(key, None)
-        kwargs.update(kwargs.pop('kwargs', dict()))
+        kwargs.update(kwargs.pop("kwargs", dict()))
         for name, value in kwargs.items():
             setattr(self, name, value)
         return self
@@ -65,22 +69,30 @@ class Config(object):
         return self.__dict__.pop(key, default)
 
     def save(self, path):
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             f.write(str(self))
 
     @classmethod
-    def load(cls, conf: str = '', unknown: Optional[Sequence[str]] = None, **kwargs: Any) -> Config:
+    def load(
+        cls, conf: str = "", unknown: Optional[Sequence[str]] = None, **kwargs: Any
+    ) -> Config:
         if conf and not os.path.exists(conf):
-            conf = download(supar.CONFIG['github'].get(conf, conf))
-        if conf.endswith(('.yml', '.yaml')):
+            conf = download(supar.CONFIG["github"].get(conf, conf))
+        if conf.endswith((".yml", ".yaml")):
             config = OmegaConf.load(conf)
         else:
             config = ConfigParser()
             config.read(conf)
-            config = dict((name, literal_eval(value)) for s in config.sections() for name, value in config.items(s))
+            config = dict(
+                (name, literal_eval(value))
+                for s in config.sections()
+                for name, value in config.items(s)
+            )
         if unknown is not None:
             parser = argparse.ArgumentParser()
             for name, value in config.items():
-                parser.add_argument('--'+name.replace('_', '-'), type=type(value), default=value)
+                parser.add_argument(
+                    "--" + name.replace("_", "-"), type=type(value), default=value
+                )
             config.update(vars(parser.parse_args(unknown)))
         return cls(**config).update(kwargs)

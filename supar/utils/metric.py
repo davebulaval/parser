@@ -13,7 +13,6 @@ from supar.utils.fn import pad
 
 
 class Metric(object):
-
     def __init__(self, reverse: Optional[bool] = None, eps: float = 1e-12) -> Metric:
         super().__init__()
 
@@ -24,35 +23,53 @@ class Metric(object):
         self.eps = eps
 
     def __repr__(self):
-        return f"loss: {self.loss:.4f} - " + ' '.join([f"{key}: {val:6.2%}" for key, val in self.values.items()])
+        return f"loss: {self.loss:.4f} - " + " ".join(
+            [f"{key}: {val:6.2%}" for key, val in self.values.items()]
+        )
 
     def __lt__(self, other: Metric) -> bool:
-        if not hasattr(self, 'score'):
+        if not hasattr(self, "score"):
             return True
-        if not hasattr(other, 'score'):
+        if not hasattr(other, "score"):
             return False
-        return (self.score < other.score) if not self.reverse else (self.score > other.score)
+        return (
+            (self.score < other.score)
+            if not self.reverse
+            else (self.score > other.score)
+        )
 
     def __le__(self, other: Metric) -> bool:
-        if not hasattr(self, 'score'):
+        if not hasattr(self, "score"):
             return True
-        if not hasattr(other, 'score'):
+        if not hasattr(other, "score"):
             return False
-        return (self.score <= other.score) if not self.reverse else (self.score >= other.score)
+        return (
+            (self.score <= other.score)
+            if not self.reverse
+            else (self.score >= other.score)
+        )
 
     def __gt__(self, other: Metric) -> bool:
-        if not hasattr(self, 'score'):
+        if not hasattr(self, "score"):
             return False
-        if not hasattr(other, 'score'):
+        if not hasattr(other, "score"):
             return True
-        return (self.score > other.score) if not self.reverse else (self.score < other.score)
+        return (
+            (self.score > other.score)
+            if not self.reverse
+            else (self.score < other.score)
+        )
 
     def __ge__(self, other: Metric) -> bool:
-        if not hasattr(self, 'score'):
+        if not hasattr(self, "score"):
             return False
-        if not hasattr(other, 'score'):
+        if not hasattr(other, "score"):
             return True
-        return (self.score >= other.score) if not self.reverse else (self.score <= other.score)
+        return (
+            (self.score >= other.score)
+            if not self.reverse
+            else (self.score <= other.score)
+        )
 
     def __add__(self, other: Metric) -> Metric:
         return other
@@ -71,16 +88,19 @@ class Metric(object):
 
 
 class AttachmentMetric(Metric):
-
     def __init__(
         self,
         loss: Optional[float] = None,
-        preds: Optional[Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]]] = None,
-        golds: Optional[Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]]] = None,
+        preds: Optional[
+            Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]]
+        ] = None,
+        golds: Optional[
+            Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]]
+        ] = None,
         mask: Optional[torch.BoolTensor] = None,
         subtype: Optional[bool] = True,
         reverse: bool = False,
-        eps: float = 1e-12
+        eps: float = 1e-12,
     ) -> AttachmentMetric:
         super().__init__(reverse=reverse, eps=eps)
 
@@ -99,7 +119,7 @@ class AttachmentMetric(Metric):
         preds: Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]],
         golds: Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]],
         mask: Optional[torch.BoolTensor] = None,
-        subtype: Optional[bool] = True
+        subtype: Optional[bool] = True,
     ) -> AttachmentMetric:
         lens = mask.sum(1)
         arc_preds, rel_preds, arc_golds, rel_golds = *preds, *golds
@@ -108,10 +128,20 @@ class AttachmentMetric(Metric):
             rel_mask = rel_preds.eq(rel_golds)
         else:
             if not subtype:
-                rel_preds = [[i.split(':', 1)[0] for i in rels] for rels in rel_preds]
-                rel_golds = [[i.split(':', 1)[0] for i in rels] for rels in rel_golds]
-            arc_mask = pad([mask.new_tensor([i == j for i, j in zip(pred, gold)]) for pred, gold in zip(arc_preds, arc_golds)])
-            rel_mask = pad([mask.new_tensor([i == j for i, j in zip(pred, gold)]) for pred, gold in zip(rel_preds, rel_golds)])
+                rel_preds = [[i.split(":", 1)[0] for i in rels] for rels in rel_preds]
+                rel_golds = [[i.split(":", 1)[0] for i in rels] for rels in rel_golds]
+            arc_mask = pad(
+                [
+                    mask.new_tensor([i == j for i, j in zip(pred, gold)])
+                    for pred, gold in zip(arc_preds, arc_golds)
+                ]
+            )
+            rel_mask = pad(
+                [
+                    mask.new_tensor([i == j for i, j in zip(pred, gold)])
+                    for pred, gold in zip(rel_preds, rel_golds)
+                ]
+            )
         arc_mask = arc_mask & mask
         rel_mask = rel_mask & arc_mask
         arc_mask_seq, rel_mask_seq = arc_mask[mask], rel_mask[mask]
@@ -162,21 +192,17 @@ class AttachmentMetric(Metric):
 
     @property
     def values(self) -> Dict:
-        return {'UCM': self.ucm,
-                'LCM': self.lcm,
-                'UAS': self.uas,
-                'LAS': self.las}
+        return {"UCM": self.ucm, "LCM": self.lcm, "UAS": self.uas, "LAS": self.las}
 
 
 class SpanMetric(Metric):
-
     def __init__(
         self,
         loss: Optional[float] = None,
         preds: Optional[List[List[Tuple]]] = None,
         golds: Optional[List[List[Tuple]]] = None,
         reverse: bool = False,
-        eps: float = 1e-12
+        eps: float = 1e-12,
     ) -> SpanMetric:
         super().__init__(reverse=reverse, eps=eps)
 
@@ -191,18 +217,21 @@ class SpanMetric(Metric):
             self(loss, preds, golds)
 
     def __call__(
-        self,
-        loss: float,
-        preds: List[List[Tuple]],
-        golds: List[List[Tuple]]
+        self, loss: float, preds: List[List[Tuple]], golds: List[List[Tuple]]
     ) -> SpanMetric:
         self.n += len(preds)
         self.count += 1
         self.total_loss += float(loss)
         for pred, gold in zip(preds, golds):
-            upred, ugold = Counter([tuple(span[:-1]) for span in pred]), Counter([tuple(span[:-1]) for span in gold])
-            lpred, lgold = Counter([tuple(span) for span in pred]), Counter([tuple(span) for span in gold])
-            utp, ltp = list((upred & ugold).elements()), list((lpred & lgold).elements())
+            upred, ugold = Counter([tuple(span[:-1]) for span in pred]), Counter(
+                [tuple(span[:-1]) for span in gold]
+            )
+            lpred, lgold = Counter([tuple(span) for span in pred]), Counter(
+                [tuple(span) for span in gold]
+            )
+            utp, ltp = list((upred & ugold).elements()), list(
+                (lpred & lgold).elements()
+            )
             self.n_ucm += len(utp) == len(pred) == len(gold)
             self.n_lcm += len(ltp) == len(pred) == len(gold)
             self.utp += len(utp)
@@ -263,18 +292,19 @@ class SpanMetric(Metric):
 
     @property
     def values(self) -> Dict:
-        return {'UCM': self.ucm,
-                'LCM': self.lcm,
-                'UP': self.up,
-                'UR': self.ur,
-                'UF': self.uf,
-                'LP': self.lp,
-                'LR': self.lr,
-                'LF': self.lf}
+        return {
+            "UCM": self.ucm,
+            "LCM": self.lcm,
+            "UP": self.up,
+            "UR": self.ur,
+            "UF": self.uf,
+            "LP": self.lp,
+            "LR": self.lr,
+            "LF": self.lf,
+        }
 
 
 class DiscontinuousSpanMetric(Metric):
-
     def __init__(
         self,
         loss: Optional[float] = None,
@@ -282,7 +312,7 @@ class DiscontinuousSpanMetric(Metric):
         golds: Optional[List[List[Tuple]]] = None,
         param: Optional[str] = None,
         reverse: bool = False,
-        eps: float = 1e-12
+        eps: float = 1e-12,
     ) -> DiscontinuousSpanMetric:
         super().__init__(reverse=reverse, eps=eps)
 
@@ -301,33 +331,39 @@ class DiscontinuousSpanMetric(Metric):
         loss: float,
         preds: List[List[Tuple]],
         golds: List[List[Tuple]],
-        param: str = None
+        param: str = None,
     ) -> DiscontinuousSpanMetric:
         self.n += len(preds)
         self.count += 1
         self.total_loss += float(loss)
         with tempfile.TemporaryDirectory() as ftemp:
-            fpred, fgold = os.path.join(ftemp, 'pred'), os.path.join(ftemp, 'gold')
-            with open(fpred, 'w') as f:
+            fpred, fgold = os.path.join(ftemp, "pred"), os.path.join(ftemp, "gold")
+            with open(fpred, "w") as f:
                 for pred in preds:
-                    f.write(pred.pformat(1000000) + '\n')
-            with open(fgold, 'w') as f:
+                    f.write(pred.pformat(1000000) + "\n")
+            with open(fgold, "w") as f:
                 for gold in golds:
-                    f.write(gold.pformat(1000000) + '\n')
+                    f.write(gold.pformat(1000000) + "\n")
 
             from discodop.eval import Evaluator, readparam
             from discodop.tree import bitfanout
             from discodop.treebank import DiscBracketCorpusReader
-            preds = DiscBracketCorpusReader(fpred, encoding='utf8', functions='remove')
-            golds = DiscBracketCorpusReader(fgold, encoding='utf8', functions='remove')
+
+            preds = DiscBracketCorpusReader(fpred, encoding="utf8", functions="remove")
+            golds = DiscBracketCorpusReader(fgold, encoding="utf8", functions="remove")
             goldtrees, goldsents = golds.trees(), golds.sents()
             candtrees, candsents = preds.trees(), preds.sents()
 
-            evaluator = Evaluator(readparam(param), max(len(str(key)) for key in candtrees))
+            evaluator = Evaluator(
+                readparam(param), max(len(str(key)) for key in candtrees)
+            )
             for n, ctree in candtrees.items():
                 evaluator.add(n, goldtrees[n], goldsents[n], ctree, candsents[n])
             cpreds, cgolds = evaluator.acc.candb, evaluator.acc.goldb
-            dpreds, dgolds = (Counter([i for i in c.elements() if bitfanout(i[1][1]) > 1]) for c in (cpreds, cgolds))
+            dpreds, dgolds = (
+                Counter([i for i in c.elements() if bitfanout(i[1][1]) > 1])
+                for c in (cpreds, cgolds)
+            )
             self.tp += sum((cpreds & cgolds).values())
             self.pred += sum(cpreds.values())
             self.gold += sum(cgolds.values())
@@ -380,23 +416,24 @@ class DiscontinuousSpanMetric(Metric):
 
     @property
     def values(self) -> Dict:
-        return {'P': self.p,
-                'R': self.r,
-                'F': self.f,
-                'DP': self.dp,
-                'DR': self.dr,
-                'DF': self.df}
+        return {
+            "P": self.p,
+            "R": self.r,
+            "F": self.f,
+            "DP": self.dp,
+            "DR": self.dr,
+            "DF": self.df,
+        }
 
 
 class ChartMetric(Metric):
-
     def __init__(
         self,
         loss: Optional[float] = None,
         preds: Optional[torch.Tensor] = None,
         golds: Optional[torch.Tensor] = None,
         reverse: bool = False,
-        eps: float = 1e-12
+        eps: float = 1e-12,
     ) -> ChartMetric:
         super().__init__(reverse=reverse, eps=eps)
 
@@ -409,10 +446,7 @@ class ChartMetric(Metric):
             self(loss, preds, golds)
 
     def __call__(
-        self,
-        loss: float,
-        preds: torch.Tensor,
-        golds: torch.Tensor
+        self, loss: float, preds: torch.Tensor, golds: torch.Tensor
     ) -> ChartMetric:
         self.n += len(preds)
         self.count += 1
@@ -468,9 +502,11 @@ class ChartMetric(Metric):
 
     @property
     def values(self) -> Dict:
-        return {'UP': self.up,
-                'UR': self.ur,
-                'UF': self.uf,
-                'P': self.p,
-                'R': self.r,
-                'F': self.f}
+        return {
+            "UP": self.up,
+            "UR": self.ur,
+            "UF": self.uf,
+            "P": self.p,
+            "R": self.r,
+            "F": self.f,
+        }

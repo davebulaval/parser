@@ -8,16 +8,16 @@ from .transform import Transform
 from .vocab import Vocab
 
 __all__ = [
-    'Dataset',
-    'Embedding',
-    'RawField',
-    'Field',
-    'SubwordField',
-    'ChartField',
-    'Transform',
-    'Vocab',
-    'field',
-    'fn',
-    'metric',
-    'transform'
+    "Dataset",
+    "Embedding",
+    "RawField",
+    "Field",
+    "SubwordField",
+    "ChartField",
+    "Transform",
+    "Vocab",
+    "field",
+    "fn",
+    "metric",
+    "transform",
 ]

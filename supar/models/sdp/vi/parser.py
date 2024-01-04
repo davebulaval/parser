@@ -19,7 +19,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
     The implementation of Semantic Dependency Parser using Variational Inference :cite:`wang-etal-2019-second`.
     """
 
-    NAME = 'vi-semantic-dependency'
+    NAME = "vi-semantic-dependency"
     MODEL = VISemanticDependencyModel
 
     def __init__(self, *args, **kwargs):
@@ -82,7 +82,9 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         mask = mask.unsqueeze(1) & mask.unsqueeze(2)
         mask[:, 0] = 0
         s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-        loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
+        loss, s_edge = self.model.loss(
+            s_edge, s_sib, s_cop, s_grd, s_label, labels, mask
+        )
         return loss
 
     @torch.no_grad()
@@ -92,9 +94,13 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         mask = mask.unsqueeze(1) & mask.unsqueeze(2)
         mask[:, 0] = 0
         s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-        loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
+        loss, s_edge = self.model.loss(
+            s_edge, s_sib, s_cop, s_grd, s_label, labels, mask
+        )
         label_preds = self.model.decode(s_edge, s_label)
-        return ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
+        return ChartMetric(
+            loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1)
+        )
 
     @torch.no_grad()
     def pred_step(self, batch: Batch) -> Batch:
@@ -105,9 +111,17 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
         s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)
         label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
-        batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
-                                               for row in chart[1:i, :i].tolist()])
-                        for i, chart in zip(lens, label_preds)]
+        batch.labels = [
+            CoNLL.build_relations(
+                [
+                    [self.LABEL.vocab[i] if i >= 0 else None for i in row]
+                    for row in chart[1:i, :i].tolist()
+                ]
+            )
+            for i, chart in zip(lens, label_preds)
+        ]
         if self.args.prob:
-            batch.probs = [prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.unbind())]
+            batch.probs = [
+                prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.unbind())
+            ]
         return batch

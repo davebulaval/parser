@@ -3,4 +3,4 @@
 from .model import AttachJuxtaposeConstituencyModel
 from .parser import AttachJuxtaposeConstituencyParser
 
-__all__ = ['AttachJuxtaposeConstituencyModel', 'AttachJuxtaposeConstituencyParser']
+__all__ = ["AttachJuxtaposeConstituencyModel", "AttachJuxtaposeConstituencyParser"]

@@ -99,51 +99,75 @@ class BiaffineSemanticDependencyModel(Model):
         https://github.com/huggingface/transformers
     """
 
-    def __init__(self,
-                 n_words,
-                 n_labels,
-                 n_tags=None,
-                 n_chars=None,
-                 n_lemmas=None,
-                 encoder='lstm',
-                 feat=['tag', 'char', 'lemma'],
-                 n_embed=100,
-                 n_pretrained=125,
-                 n_feat_embed=100,
-                 n_char_embed=50,
-                 n_char_hidden=400,
-                 char_pad_index=0,
-                 char_dropout=0.33,
-                 elmo='original_5b',
-                 elmo_bos_eos=(True, False),
-                 bert=None,
-                 n_bert_layers=4,
-                 mix_dropout=.0,
-                 bert_pooling='mean',
-                 bert_pad_index=0,
-                 finetune=False,
-                 n_plm_embed=0,
-                 embed_dropout=.2,
-                 n_encoder_hidden=1200,
-                 n_encoder_layers=3,
-                 encoder_dropout=.33,
-                 n_edge_mlp=600,
-                 n_label_mlp=600,
-                 edge_mlp_dropout=.25,
-                 label_mlp_dropout=.33,
-                 interpolation=0.1,
-                 pad_index=0,
-                 unk_index=1,
-                 **kwargs):
+    def __init__(
+        self,
+        n_words,
+        n_labels,
+        n_tags=None,
+        n_chars=None,
+        n_lemmas=None,
+        encoder="lstm",
+        feat=["tag", "char", "lemma"],
+        n_embed=100,
+        n_pretrained=125,
+        n_feat_embed=100,
+        n_char_embed=50,
+        n_char_hidden=400,
+        char_pad_index=0,
+        char_dropout=0.33,
+        elmo="original_5b",
+        elmo_bos_eos=(True, False),
+        bert=None,
+        n_bert_layers=4,
+        mix_dropout=0.0,
+        bert_pooling="mean",
+        bert_pad_index=0,
+        finetune=False,
+        n_plm_embed=0,
+        embed_dropout=0.2,
+        n_encoder_hidden=1200,
+        n_encoder_layers=3,
+        encoder_dropout=0.33,
+        n_edge_mlp=600,
+        n_label_mlp=600,
+        edge_mlp_dropout=0.25,
+        label_mlp_dropout=0.33,
+        interpolation=0.1,
+        pad_index=0,
+        unk_index=1,
+        **kwargs
+    ):
         super().__init__(**Config().update(locals()))
 
-        self.edge_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
-        self.edge_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
-        self.label_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
-        self.label_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
+        self.edge_mlp_d = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_edge_mlp,
+            dropout=edge_mlp_dropout,
+            activation=False,
+        )
+        self.edge_mlp_h = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_edge_mlp,
+            dropout=edge_mlp_dropout,
+            activation=False,
+        )
+        self.label_mlp_d = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_label_mlp,
+            dropout=label_mlp_dropout,
+            activation=False,
+        )
+        self.label_mlp_h = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_label_mlp,
+            dropout=label_mlp_dropout,
+            activation=False,
+        )
 
         self.edge_attn = Biaffine(n_in=n_edge_mlp, n_out=2, bias_x=True, bias_y=True)
-        self.label_attn = Biaffine(n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True)
+        self.label_attn = Biaffine(
+            n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True
+        )
         self.criterion = nn.CrossEntropyLoss()
 
     def load_pretrained(self, embed=None):
@@ -205,7 +229,10 @@ class BiaffineSemanticDependencyModel(Model):
         edge_mask = labels.ge(0) & mask
         edge_loss = self.criterion(s_edge[mask], edge_mask[mask].long())
         label_loss = self.criterion(s_label[edge_mask], labels[edge_mask])
-        return self.args.interpolation * label_loss + (1 - self.args.interpolation) * edge_loss
+        return (
+            self.args.interpolation * label_loss
+            + (1 - self.args.interpolation) * edge_loss
+        )
 
     def decode(self, s_edge, s_label):
         r"""
@@ -323,62 +350,103 @@ class VISemanticDependencyModel(BiaffineSemanticDependencyModel):
         https://github.com/huggingface/transformers
     """
 
-    def __init__(self,
-                 n_words,
-                 n_labels,
-                 n_tags=None,
-                 n_chars=None,
-                 n_lemmas=None,
-                 encoder='lstm',
-                 feat=['tag', 'char', 'lemma'],
-                 n_embed=100,
-                 n_pretrained=125,
-                 n_feat_embed=100,
-                 n_char_embed=50,
-                 n_char_hidden=100,
-                 char_pad_index=0,
-                 char_dropout=0,
-                 elmo='original_5b',
-                 elmo_bos_eos=(True, False),
-                 bert=None,
-                 n_bert_layers=4,
-                 mix_dropout=.0,
-                 bert_pooling='mean',
-                 bert_pad_index=0,
-                 finetune=False,
-                 n_plm_embed=0,
-                 embed_dropout=.2,
-                 n_encoder_hidden=1200,
-                 n_encoder_layers=3,
-                 encoder_dropout=.33,
-                 n_edge_mlp=600,
-                 n_pair_mlp=150,
-                 n_label_mlp=600,
-                 edge_mlp_dropout=.25,
-                 pair_mlp_dropout=.25,
-                 label_mlp_dropout=.33,
-                 inference='mfvi',
-                 max_iter=3,
-                 interpolation=0.1,
-                 pad_index=0,
-                 unk_index=1,
-                 **kwargs):
+    def __init__(
+        self,
+        n_words,
+        n_labels,
+        n_tags=None,
+        n_chars=None,
+        n_lemmas=None,
+        encoder="lstm",
+        feat=["tag", "char", "lemma"],
+        n_embed=100,
+        n_pretrained=125,
+        n_feat_embed=100,
+        n_char_embed=50,
+        n_char_hidden=100,
+        char_pad_index=0,
+        char_dropout=0,
+        elmo="original_5b",
+        elmo_bos_eos=(True, False),
+        bert=None,
+        n_bert_layers=4,
+        mix_dropout=0.0,
+        bert_pooling="mean",
+        bert_pad_index=0,
+        finetune=False,
+        n_plm_embed=0,
+        embed_dropout=0.2,
+        n_encoder_hidden=1200,
+        n_encoder_layers=3,
+        encoder_dropout=0.33,
+        n_edge_mlp=600,
+        n_pair_mlp=150,
+        n_label_mlp=600,
+        edge_mlp_dropout=0.25,
+        pair_mlp_dropout=0.25,
+        label_mlp_dropout=0.33,
+        inference="mfvi",
+        max_iter=3,
+        interpolation=0.1,
+        pad_index=0,
+        unk_index=1,
+        **kwargs
+    ):
         super().__init__(**Config().update(locals()))
 
-        self.edge_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
-        self.edge_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
-        self.pair_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
-        self.pair_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
-        self.pair_mlp_g = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
-        self.label_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
-        self.label_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
+        self.edge_mlp_d = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_edge_mlp,
+            dropout=edge_mlp_dropout,
+            activation=False,
+        )
+        self.edge_mlp_h = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_edge_mlp,
+            dropout=edge_mlp_dropout,
+            activation=False,
+        )
+        self.pair_mlp_d = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_pair_mlp,
+            dropout=pair_mlp_dropout,
+            activation=False,
+        )
+        self.pair_mlp_h = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_pair_mlp,
+            dropout=pair_mlp_dropout,
+            activation=False,
+        )
+        self.pair_mlp_g = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_pair_mlp,
+            dropout=pair_mlp_dropout,
+            activation=False,
+        )
+        self.label_mlp_d = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_label_mlp,
+            dropout=label_mlp_dropout,
+            activation=False,
+        )
+        self.label_mlp_h = MLP(
+            n_in=self.args.n_encoder_hidden,
+            n_out=n_label_mlp,
+            dropout=label_mlp_dropout,
+            activation=False,
+        )
 
         self.edge_attn = Biaffine(n_in=n_edge_mlp, bias_x=True, bias_y=True)
         self.sib_attn = Triaffine(n_in=n_pair_mlp, bias_x=True, bias_y=True)
         self.cop_attn = Triaffine(n_in=n_pair_mlp, bias_x=True, bias_y=True)
         self.grd_attn = Triaffine(n_in=n_pair_mlp, bias_x=True, bias_y=True)
-        self.label_attn = Biaffine(n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True)
-        self.inference = (SemanticDependencyMFVI if inference == 'mfvi' else SemanticDependencyLBP)(max_iter)
+        self.label_attn = Biaffine(
+            n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True
+        )
+        self.inference = (
+            SemanticDependencyMFVI if inference == "mfvi" else SemanticDependencyLBP
+        )(max_iter)
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, words, feats=None):
@@ -450,9 +518,14 @@ class VISemanticDependencyModel(BiaffineSemanticDependencyModel):
         """
 
         edge_mask = labels.ge(0) & mask
-        edge_loss, marginals = self.inference((s_edge, s_sib, s_cop, s_grd), mask, edge_mask.long())
+        edge_loss, marginals = self.inference(
+            (s_edge, s_sib, s_cop, s_grd), mask, edge_mask.long()
+        )
         label_loss = self.criterion(s_label[edge_mask], labels[edge_mask])
-        loss = self.args.interpolation * label_loss + (1 - self.args.interpolation) * edge_loss
+        loss = (
+            self.args.interpolation * label_loss
+            + (1 - self.args.interpolation) * edge_loss
+        )
         return loss, marginals
 
     def decode(self, s_edge, s_label):

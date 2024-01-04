@@ -3,4 +3,4 @@
 from .model import CRFDependencyModel
 from .parser import CRFDependencyParser
 
-__all__ = ['CRFDependencyModel', 'CRFDependencyParser']
+__all__ = ["CRFDependencyModel", "CRFDependencyParser"]

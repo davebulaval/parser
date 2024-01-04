@@ -3,4 +3,4 @@
 from .model import VIDependencyModel
 from .parser import VIDependencyParser
 
-__all__ = ['VIDependencyModel', 'VIDependencyParser']
+__all__ = ["VIDependencyModel", "VIDependencyParser"]

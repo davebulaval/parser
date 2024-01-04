@@ -2,13 +2,13 @@
 
 import os
 
-PAD = '<pad>'
-UNK = '<unk>'
-BOS = '<bos>'
-EOS = '<eos>'
-NUL = '<nul>'
+PAD = "<pad>"
+UNK = "<unk>"
+BOS = "<bos>"
+EOS = "<eos>"
+NUL = "<nul>"
 
 MIN = -1e32
-INF = float('inf')
+INF = float("inf")
 
-CACHE = os.path.expanduser('~/.cache/supar')
+CACHE = os.path.expanduser("~/.cache/supar")

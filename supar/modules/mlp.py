@@ -23,13 +23,17 @@ class MLP(nn.Module):
             Whether to use activations. Default: True.
     """
 
-    def __init__(self, n_in: int, n_out: int, dropout: float = .0, activation: bool = True) -> MLP:
+    def __init__(
+        self, n_in: int, n_out: int, dropout: float = 0.0, activation: bool = True
+    ) -> MLP:
         super().__init__()
 
         self.n_in = n_in
         self.n_out = n_out
         self.linear = nn.Linear(n_in, n_out)
-        self.activation = nn.LeakyReLU(negative_slope=0.1) if activation else nn.Identity()
+        self.activation = (
+            nn.LeakyReLU(negative_slope=0.1) if activation else nn.Identity()
+        )
         self.dropout = SharedDropout(p=dropout)
 
         self.reset_parameters()

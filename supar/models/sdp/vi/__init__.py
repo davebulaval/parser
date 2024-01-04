@@ -3,4 +3,4 @@
 from .model import VISemanticDependencyModel
 from .parser import VISemanticDependencyParser
 
-__all__ = ['VISemanticDependencyModel', 'VISemanticDependencyParser']
+__all__ = ["VISemanticDependencyModel", "VISemanticDependencyParser"]

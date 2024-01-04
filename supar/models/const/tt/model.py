@@ -90,45 +90,47 @@ class TetraTaggingConstituencyModel(Model):
         https://github.com/huggingface/transformers
     """
 
-    def __init__(self,
-                 n_words,
-                 n_tags=None,
-                 n_chars=None,
-                 encoder='lstm',
-                 feat=['char'],
-                 n_embed=100,
-                 n_pretrained=100,
-                 n_feat_embed=100,
-                 n_char_embed=50,
-                 n_char_hidden=100,
-                 char_pad_index=0,
-                 elmo='original_5b',
-                 elmo_bos_eos=(True, True),
-                 bert=None,
-                 n_bert_layers=4,
-                 mix_dropout=.0,
-                 bert_pooling='mean',
-                 bert_pad_index=0,
-                 finetune=False,
-                 n_plm_embed=0,
-                 embed_dropout=.33,
-                 n_encoder_hidden=800,
-                 n_encoder_layers=3,
-                 encoder_dropout=.33,
-                 n_gnn_layers=3,
-                 gnn_dropout=.33,
-                 pad_index=0,
-                 unk_index=1,
-                 **kwargs):
+    def __init__(
+        self,
+        n_words,
+        n_tags=None,
+        n_chars=None,
+        encoder="lstm",
+        feat=["char"],
+        n_embed=100,
+        n_pretrained=100,
+        n_feat_embed=100,
+        n_char_embed=50,
+        n_char_hidden=100,
+        char_pad_index=0,
+        elmo="original_5b",
+        elmo_bos_eos=(True, True),
+        bert=None,
+        n_bert_layers=4,
+        mix_dropout=0.0,
+        bert_pooling="mean",
+        bert_pad_index=0,
+        finetune=False,
+        n_plm_embed=0,
+        embed_dropout=0.33,
+        n_encoder_hidden=800,
+        n_encoder_layers=3,
+        encoder_dropout=0.33,
+        n_gnn_layers=3,
+        gnn_dropout=0.33,
+        pad_index=0,
+        unk_index=1,
+        **kwargs
+    ):
         super().__init__(**Config().update(locals()))
 
-        self.proj = nn.Linear(self.args.n_encoder_hidden, self.args.n_leaves + self.args.n_nodes)
+        self.proj = nn.Linear(
+            self.args.n_encoder_hidden, self.args.n_leaves + self.args.n_nodes
+        )
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(
-        self,
-        words: torch.LongTensor,
-        feats: List[torch.LongTensor] = None
+        self, words: torch.LongTensor, feats: List[torch.LongTensor] = None
     ) -> torch.Tensor:
         r"""
         Args:
@@ -146,7 +148,7 @@ class TetraTaggingConstituencyModel(Model):
         """
 
         s = self.proj(self.encode(words, feats)[:, 1:-1])
-        s_leaf, s_node = s[..., :self.args.n_leaves], s[..., self.args.n_leaves:]
+        s_leaf, s_node = s[..., : self.args.n_leaves], s[..., self.args.n_leaves :]
         return s_leaf, s_node
 
     def loss(
@@ -155,7 +157,7 @@ class TetraTaggingConstituencyModel(Model):
         s_node: torch.Tensor,
         leaves: torch.LongTensor,
         nodes: torch.LongTensor,
-        mask: torch.BoolTensor
+        mask: torch.BoolTensor,
     ) -> torch.Tensor:
         r"""
         Args:
@@ -177,7 +179,11 @@ class TetraTaggingConstituencyModel(Model):
 
         leaf_mask, node_mask = mask, mask[:, 1:]
         leaf_loss = self.criterion(s_leaf[leaf_mask], leaves[leaf_mask])
-        node_loss = self.criterion(s_node[:, :-1][node_mask], nodes[node_mask]) if nodes.shape[1] > 0 else 0
+        node_loss = (
+            self.criterion(s_node[:, :-1][node_mask], nodes[node_mask])
+            if nodes.shape[1] > 0
+            else 0
+        )
         return leaf_loss + node_loss
 
     def decode(
@@ -186,7 +192,7 @@ class TetraTaggingConstituencyModel(Model):
         s_node: torch.Tensor,
         mask: torch.BoolTensor,
         left_mask: torch.BoolTensor,
-        depth: int = 8
+        depth: int = 8,
     ) -> List[List[Tuple]]:
         r"""
         Args:
@@ -211,11 +217,20 @@ class TetraTaggingConstituencyModel(Model):
         batch_size, seq_len, n_leaves = s_leaf.shape
         leaf_left_mask, node_left_mask = left_mask[:n_leaves], left_mask[n_leaves:]
         # [n_leaves], [n_nodes]
-        changes = (torch.where(leaf_left_mask, 1, 0), torch.where(node_left_mask, 0, -1))
+        changes = (
+            torch.where(leaf_left_mask, 1, 0),
+            torch.where(node_left_mask, 0, -1),
+        )
         # [batch_size, depth]
-        depths = lens.new_full((depth,), -2).index_fill_(-1, lens.new_tensor(0), -1).repeat(batch_size, 1)
+        depths = (
+            lens.new_full((depth,), -2)
+            .index_fill_(-1, lens.new_tensor(0), -1)
+            .repeat(batch_size, 1)
+        )
         # [2, batch_size, depth, seq_len]
-        labels, paths = lens.new_zeros(2, batch_size, depth, seq_len), lens.new_zeros(2, batch_size, depth, seq_len)
+        labels, paths = lens.new_zeros(2, batch_size, depth, seq_len), lens.new_zeros(
+            2, batch_size, depth, seq_len
+        )
         # [batch_size, depth]
         s = s_leaf.new_zeros(batch_size, depth)
 
@@ -227,26 +242,41 @@ class TetraTaggingConstituencyModel(Model):
             s_t = s.unsqueeze(-1) + s_t.unsqueeze(1)
             # [batch_size, depth * n_labels]
             # fill scores of invalid depths with -INF
-            s_t = s_t.view(batch_size, -1).masked_fill_((depths < 0).logical_or_(depths >= depth), -INF)
+            s_t = s_t.view(batch_size, -1).masked_fill_(
+                (depths < 0).logical_or_(depths >= depth), -INF
+            )
             # [batch_size, depth]
             # for each depth, we use the `scatter_max` trick to obtain the 1-best label
-            s, ls = scatter_max(s_t, depths.clamp(0, depth - 1), -1, s_t.new_full((batch_size, depth), -INF))
+            s, ls = scatter_max(
+                s_t,
+                depths.clamp(0, depth - 1),
+                -1,
+                s_t.new_full((batch_size, depth), -INF),
+            )
             # [batch_size, depth]
-            depths = depths.gather(-1, ls.clamp(0, depths.shape[1] - 1)).masked_fill_(s.eq(-INF), -1)
+            depths = depths.gather(-1, ls.clamp(0, depths.shape[1] - 1)).masked_fill_(
+                s.eq(-INF), -1
+            )
             ll = ls % n_labels
             lp = depths - changes[ll]
             return s, ll, lp, depths
 
         for t in range(seq_len):
             m = lens.gt(t)
-            s[m], labels[0, m, :, t], paths[0, m, :, t], depths[m] = advance(s[m], s_leaf[m, t], depths[m], changes[0])
+            s[m], labels[0, m, :, t], paths[0, m, :, t], depths[m] = advance(
+                s[m], s_leaf[m, t], depths[m], changes[0]
+            )
             if t == seq_len - 1:
                 break
             m = lens.gt(t + 1)
-            s[m], labels[1, m, :, t], paths[1, m, :, t], depths[m] = advance(s[m], s_node[m, t], depths[m], changes[1])
+            s[m], labels[1, m, :, t], paths[1, m, :, t], depths[m] = advance(
+                s[m], s_node[m, t], depths[m], changes[1]
+            )
 
         lens = lens.tolist()
-        labels, paths = labels.movedim((0, 2), (2, 3))[mask].split(lens), paths.movedim((0, 2), (2, 3))[mask].split(lens)
+        labels, paths = labels.movedim((0, 2), (2, 3))[mask].split(lens), paths.movedim(
+            (0, 2), (2, 3)
+        )[mask].split(lens)
         leaves, nodes = [], []
         for i, length in enumerate(lens):
             leaf_labels, node_labels = labels[i].transpose(0, 1).tolist()
