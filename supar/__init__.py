@@ -105,6 +105,9 @@ NAME = {
     "en": "KoichiYasuoka/roberta-base-english-upos/supar.model",
     "en_base": "KoichiYasuoka/roberta-base-english-upos/supar.model",
     "en_large": "KoichiYasuoka/roberta-large-english-upos/supar.model",
+}
+
+ESUPAR_NAME = {
     "ja": "KoichiYasuoka/bert-base-japanese-upos/supar.model",
     "ja_base": "KoichiYasuoka/bert-base-japanese-upos/supar.model",
     "ja_large": "KoichiYasuoka/bert-large-japanese-upos/supar.model",
@@ -129,6 +132,7 @@ NAME = {
     "zh_base": "KoichiYasuoka/chinese-roberta-base-upos/supar.model",
     "zh_large": "KoichiYasuoka/chinese-roberta-large-upos/supar.model",
 }
+
 MODEL = {
     src: {n: f"{link}/v1.1.0/{m}.zip" for n, m in NAME.items()}
     for src, link in SRC.items()
