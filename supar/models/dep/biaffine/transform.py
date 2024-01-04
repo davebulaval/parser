@@ -372,6 +372,7 @@ class CoNLL(Transform):
         lang: Optional[str] = None,
         proj: bool = False,
         malt: str = None,
+        tokenizer: Tokenizer = None,
         **kwargs
     ) -> Iterable[CoNLLSentence]:
         r"""
@@ -391,13 +392,14 @@ class CoNLL(Transform):
             malt (bool):
                 If specified, projectivizes all the non-projective trees to pseudo-projective ones.
                 Default: ``None``.
+            tokenizer (Tokenizer): Tokenizer to use.
 
         Returns:
             A list of :class:`CoNLLSentence` instances.
         """
 
         isconll = False
-        if lang is not None:
+        if lang is not None and tokenizer is None:
             tokenizer = Tokenizer(lang)
         with tempfile.TemporaryDirectory() as tdir:
             if isinstance(data, str) and os.path.exists(data):
