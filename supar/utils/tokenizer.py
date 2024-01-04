@@ -18,10 +18,10 @@ class Tokenizer:
     def __init__(self, lang: str = 'en') -> Tokenizer:
         import stanza
         try:
-            self.pipeline = stanza.Pipeline(lang=lang, processors='tokenize', verbose=False, tokenize_no_ssplit=True)
+            self.pipeline = stanza.Pipeline(lang=lang, processors='tokenize', verbose=False, tokenize_no_ssplit=True, download_method="reuse_resources")
         except Exception:
             stanza.download(lang=lang, resources_url='stanford')
-            self.pipeline = stanza.Pipeline(lang=lang, processors='tokenize', verbose=False, tokenize_no_ssplit=True)
+            self.pipeline = stanza.Pipeline(lang=lang, processors='tokenize', verbose=False, tokenize_no_ssplit=True, download_method="reuse_resources")
 
     def __call__(self, text: str) -> List[str]:
         return [i.text for i in self.pipeline(text).sentences[0].tokens]
