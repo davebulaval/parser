@@ -51,11 +51,11 @@ The following requirements should be satisfied:
 
 You can download the pretrained model and parse sentences with just a few lines of code:
 ```py
->>> from supar import Parser
+from supar import Parser
 # if the gpu device is available
-# >>> torch.cuda.set_device('cuda:0')  
->>> parser = Parser.load('dep-biaffine-en')
->>> dataset = parser.predict('I saw Sarah with a telescope.', lang='en', prob=True, verbose=False)
+# torch.cuda.set_device('cuda:0')  
+parser = Parser.load('dep-biaffine-en')
+dataset = parser.predict('I saw Sarah with a telescope.', lang='en', prob=True, verbose=False)
 ```
 By default, we use [`stanza`](https://github.com/stanfordnlp/stanza) internally to tokenize plain texts for parsing.
 You only need to specify the language code `lang` for tokenization.
@@ -64,7 +64,7 @@ The call to `parser.predict` will return an instance of `supar.utils.Dataset` co
 You can either access each sentence held in `dataset` or an individual field of all results.
 Probabilities can be returned along with the results if `prob=True`.
 ```py
->>> dataset[0]
+dataset[0]
 1       I       _       _       _       _       2       nsubj   _       _
 2       saw     _       _       _       _       0       root    _       _
 3       Sarah   _       _       _       _       2       dobj    _       _
@@ -73,7 +73,7 @@ Probabilities can be returned along with the results if `prob=True`.
 6       telescope       _       _       _       _       4       pobj    _       _
 7       .       _       _       _       _       2       punct   _       _
 
->>> print(f"arcs:  {dataset.arcs[0]}\n"
+print(f"arcs:  {dataset.arcs[0]}\n"
           f"rels:  {dataset.rels[0]}\n"
           f"probs: {dataset.probs[0].gather(1,torch.tensor(dataset.arcs[0]).unsqueeze(1)).squeeze(-1)}")
 arcs:  [2, 0, 2, 2, 6, 4, 2]
@@ -85,12 +85,12 @@ probs: tensor([1.0000, 0.9999, 0.9966, 0.8944, 1.0000, 1.0000, 0.9999])
 For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are needed.
 
 ```py
->>> import os
->>> import tempfile
+import os
+import tempfile
 # if the gpu device is available
-# >>> torch.cuda.set_device('cuda:0')  
->>> dep = Parser.load('dep-biaffine-en')
->>> dep.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0]
+# torch.cuda.set_device('cuda:0')  
+dep = Parser.load('dep-biaffine-en')
+dep.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0]
 1       I       _       _       _       _       2       nsubj   _       _
 2       saw     _       _       _       _       0       root    _       _
 3       Sarah   _       _       _       _       2       dobj    _       _
@@ -99,8 +99,8 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 6       telescope       _       _       _       _       4       pobj    _       _
 7       .       _       _       _       _       2       punct   _       _
 
->>> path = os.path.join(tempfile.mkdtemp(), 'data.conllx')
->>> with open(path, 'w') as f:
+path = os.path.join(tempfile.mkdtemp(), 'data.conllx')
+with open(path, 'w') as f:
 ...     f.write('''# text = But I found the location wonderful and the neighbors very kind.
 1\tBut\t_\t_\t_\t_\t_\t_\t_\t_
 2\tI\t_\t_\t_\t_\t_\t_\t_\t_
@@ -118,7 +118,7 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 
 ''')
 ...
->>> dep.predict(path, pred='pred.conllx', verbose=False)[0]
+dep.predict(path, pred='pred.conllx', verbose=False)[0]
 # text = But I found the location wonderful and the neighbors very kind.
 1       But     _       _       _       _       3       cc      _       _
 2       I       _       _       _       _       3       nsubj   _       _
@@ -134,8 +134,8 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 11      kind    _       _       _       _       6       conj    _       _
 12      .       _       _       _       _       3       punct   _       _
 
->>> con = Parser.load('con-crf-en')
->>> con.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0].pretty_print()
+con = Parser.load('con-crf-en')
+con.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0].pretty_print()
               TOP                       
                |                         
                S                        
@@ -150,8 +150,8 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
  |   |    |    |    |          |      |  
  I  saw Sarah with  a      telescope  . 
 
->>> sdp = Parser.load('sdp-biaffine-en')
->>> sdp.predict([[('I','I','PRP'), ('saw','see','VBD'), ('Sarah','Sarah','NNP'), ('with','with','IN'),
+sdp = Parser.load('sdp-biaffine-en')
+sdp.predict([[('I','I','PRP'), ('saw','see','VBD'), ('Sarah','Sarah','NNP'), ('with','with','IN'),
                   ('a','a','DT'), ('telescope','telescope','NN'), ('.','_','.')]],
                 verbose=False)[0]
 1       I       I       PRP     _       _       _       _       2:ARG1  _
@@ -189,8 +189,8 @@ You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/note
 The evaluation process resembles prediction:
 ```py
 # if the gpu device is available
-# >>> torch.cuda.set_device('cuda:0')  
->>> Parser.load('dep-biaffine-en').evaluate('ptb/test.conllx', verbose=False)
+# torch.cuda.set_device('cuda:0')  
+Parser.load('dep-biaffine-en').evaluate('ptb/test.conllx', verbose=False)
 loss: 0.2393 - UCM: 60.51% LCM: 50.37% UAS: 96.01% LAS: 94.41%
 ```
 
