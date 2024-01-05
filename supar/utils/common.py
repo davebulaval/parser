@@ -11,4 +11,4 @@ NUL = "<nul>"
 MIN = -1e32
 INF = float("inf")
 
-CACHE = os.path.expanduser("~/.cache/supar")
+CACHE = os.getenv("SUPAR_CACHE", os.path.expanduser("~/.cache/supar"))
