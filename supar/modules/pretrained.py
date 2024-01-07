@@ -104,11 +104,14 @@ class TransformerEmbedding(nn.Module):
         return f"{self.__class__.__name__}({s})"
 
     def forward(
-        self, tokens: torch.Tensor, return_pooler_output: bool = False
+        self,
+        tokens: torch.Tensor,
+        return_decoder_ouput: bool = False,
     ) -> torch.Tensor:
         r"""
         Args:
             tokens (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
+            return_decoder_ouput (bool): Whether to return the last hidden or not.
 
         Returns:
             ~torch.Tensor:
@@ -127,13 +130,13 @@ class TransformerEmbedding(nn.Module):
             mask[mask].split(lens.tolist()), 0, padding_side=self.tokenizer.padding_side
         )
 
-        if return_pooler_output:
-            # Return the pooler (thus aggregated representation of the last layer).
-            # [batch_size, hidden_size]
+        if return_decoder_ouput:
+            # Return the decoder output last hidden states and attention weights
+            # [batch_size, num_tokens, hidden_size]
             x = self.model(
                 tokens[:, : self.max_len],
                 attention_mask=token_mask[:, : self.max_len].float(),
-            ).pooler_output
+            )
 
             return x
         else:
