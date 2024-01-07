@@ -9,12 +9,15 @@ from collections import Counter, defaultdict
 from typing import Any, Dict, List, Optional, Union, Iterable
 
 import torch.distributed as dist
+
 from supar.utils.parallel import is_dist, is_master
 from supar.utils.vocab import Vocab
 
 
 class Tokenizer:
-    def __init__(self, lang: str = "en") -> Tokenizer:
+    def __init__(
+        self, lang: str = "en", download_method: str = "reuse_resources"
+    ) -> Tokenizer:
         import stanza
 
         try:
@@ -23,7 +26,7 @@ class Tokenizer:
                 processors="tokenize",
                 verbose=False,
                 tokenize_no_ssplit=True,
-                download_method="reuse_resources",
+                download_method=download_method,
             )
         except Exception:
             stanza.download(lang=lang, resources_url="stanford")
@@ -32,7 +35,7 @@ class Tokenizer:
                 processors="tokenize",
                 verbose=False,
                 tokenize_no_ssplit=True,
-                download_method="reuse_resources",
+                download_method=download_method,
             )
 
     def __call__(self, text: str) -> List[str]:
