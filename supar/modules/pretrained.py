@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 import torch
 import torch.nn as nn
+
 from supar.utils.fn import pad
 from supar.utils.tokenizer import TransformerTokenizer
 
@@ -102,7 +103,9 @@ class TransformerEmbedding(nn.Module):
             s += f", finetune={self.finetune}"
         return f"{self.__class__.__name__}({s})"
 
-    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, tokens: torch.Tensor, return_pooler_output: bool = False
+    ) -> torch.Tensor:
         r"""
         Args:
             tokens (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
@@ -124,54 +127,70 @@ class TransformerEmbedding(nn.Module):
             mask[mask].split(lens.tolist()), 0, padding_side=self.tokenizer.padding_side
         )
 
-        # return the hidden states of all layers
-        x = self.model(
-            tokens[:, : self.max_len],
-            attention_mask=token_mask[:, : self.max_len].float(),
-        )[-1]
-        # [batch_size, max_len, hidden_size]
-        x = self.scalar_mix(x[-self.n_layers :])
-        # [batch_size, n_tokens, hidden_size]
-        for i in range(
-            self.stride,
-            (tokens.shape[1] - self.max_len + self.stride - 1)
-            // self.stride
-            * self.stride
-            + 1,
-            self.stride,
-        ):
-            part = self.model(
-                tokens[:, i : i + self.max_len],
-                attention_mask=token_mask[:, i : i + self.max_len].float(),
+        if return_pooler_output:
+            # Return the pooler (thus aggregated representation of the last layer).
+            # [batch_size, hidden_size]
+            x = self.model(
+                tokens[:, : self.max_len],
+                attention_mask=token_mask[:, : self.max_len].float(),
+            ).pooler_output
+
+            return x
+        else:
+            # Return the projection per words
+
+            # Return the hidden states of all layers
+            x = self.model(
+                tokens[:, : self.max_len],
+                attention_mask=token_mask[:, : self.max_len].float(),
             )[-1]
-            x = torch.cat(
-                (
-                    x,
-                    self.scalar_mix(part[-self.n_layers :])[
-                        :, self.max_len - self.stride :
-                    ],
-                ),
-                1,
+            # [batch_size, max_len, hidden_size]
+            x = self.scalar_mix(x[-self.n_layers :])
+            # [batch_size, n_tokens, hidden_size]
+            for i in range(
+                self.stride,
+                (tokens.shape[1] - self.max_len + self.stride - 1)
+                // self.stride
+                * self.stride
+                + 1,
+                self.stride,
+            ):
+                part = self.model(
+                    tokens[:, i : i + self.max_len],
+                    attention_mask=token_mask[:, i : i + self.max_len].float(),
+                )[-1]
+                x = torch.cat(
+                    (
+                        x,
+                        self.scalar_mix(part[-self.n_layers :])[
+                            :, self.max_len - self.stride :
+                        ],
+                    ),
+                    1,
+                )
+            # [batch_size, seq_len]
+            lens = mask.sum(-1)
+            lens = lens.masked_fill_(lens.eq(0), 1)
+            # [batch_size, seq_len, fix_len, hidden_size]
+            x = x.new_zeros(*mask.shape, self.hidden_size).masked_scatter_(
+                mask.unsqueeze(-1), x[token_mask]
             )
-        # [batch_size, seq_len]
-        lens = mask.sum(-1)
-        lens = lens.masked_fill_(lens.eq(0), 1)
-        # [batch_size, seq_len, fix_len, hidden_size]
-        x = x.new_zeros(*mask.shape, self.hidden_size).masked_scatter_(
-            mask.unsqueeze(-1), x[token_mask]
-        )
-        # [batch_size, seq_len, hidden_size]
-        if self.pooling == "first":
-            x = x[:, :, 0]
-        elif self.pooling == "last":
-            x = x.gather(
-                2, (lens - 1).unsqueeze(-1).repeat(1, 1, self.hidden_size).unsqueeze(2)
-            ).squeeze(2)
-        elif self.pooling == "mean":
-            x = x.sum(2) / lens.unsqueeze(-1)
-        elif self.pooling:
-            raise RuntimeError(f'Unsupported pooling method "{self.pooling}"!')
-        return self.projection(x)
+            # [batch_size, seq_len, hidden_size]
+            if self.pooling == "first":
+                x = x[:, :, 0]
+            elif self.pooling == "last":
+                x = x.gather(
+                    2,
+                    (lens - 1)
+                    .unsqueeze(-1)
+                    .repeat(1, 1, self.hidden_size)
+                    .unsqueeze(2),
+                ).squeeze(2)
+            elif self.pooling == "mean":
+                x = x.sum(2) / lens.unsqueeze(-1)
+            elif self.pooling:
+                raise RuntimeError(f'Unsupported pooling method "{self.pooling}"!')
+            return self.projection(x)
 
 
 class ELMoEmbedding(nn.Module):
@@ -193,16 +212,24 @@ class ELMoEmbedding(nn.Module):
     """
 
     OPTION = {
-        "small": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x1024_128_2048cnn_1xhighway/elmo_2x1024_128_2048cnn_1xhighway_options.json",  # noqa
-        "medium": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x2048_256_2048cnn_1xhighway/elmo_2x2048_256_2048cnn_1xhighway_options.json",  # noqa
-        "original": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json",  # noqa
-        "original_5b": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_options.json",  # noqa
+        "small": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x1024_128_2048cnn_1xhighway/elmo_2x1024_128_2048cnn_1xhighway_options.json",
+        # noqa
+        "medium": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x2048_256_2048cnn_1xhighway/elmo_2x2048_256_2048cnn_1xhighway_options.json",
+        # noqa
+        "original": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json",
+        # noqa
+        "original_5b": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_options.json",
+        # noqa
     }
     WEIGHT = {
-        "small": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x1024_128_2048cnn_1xhighway/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5",  # noqa
-        "medium": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x2048_256_2048cnn_1xhighway/elmo_2x2048_256_2048cnn_1xhighway_weights.hdf5",  # noqa
-        "original": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",  # noqa
-        "original_5b": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5",  # noqa
+        "small": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x1024_128_2048cnn_1xhighway/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5",
+        # noqa
+        "medium": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x2048_256_2048cnn_1xhighway/elmo_2x2048_256_2048cnn_1xhighway_weights.hdf5",
+        # noqa
+        "original": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",
+        # noqa
+        "original_5b": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5",
+        # noqa
     }
 
     def __init__(

@@ -211,6 +211,7 @@ class Model(nn.Module):
         elif self.args.encoder == "transformer":
             x = self.encoder(self.embed(words, feats), words.ne(self.args.pad_index))
         else:
+            # For BERT
             x = self.encoder(words)
         return self.encoder_dropout(x)
 
