@@ -356,7 +356,7 @@ class DataLoader(torch.utils.data.DataLoader):
 
 
 class PrefetchGenerator(threading.Thread):
-    def __init__(self, transform, loader, prefetch=1):
+    def __init__(self, transform, loader, prefetch=1, device: str = "cuda"):
         threading.Thread.__init__(self)
 
         self.transform = transform
@@ -368,6 +368,8 @@ class PrefetchGenerator(threading.Thread):
             self.stream = torch.cuda.Stream()
 
         self.start()
+
+        self.device = device if torch.cuda.is_available() else "cpu"
 
     def __iter__(self):
         return self
@@ -388,10 +390,10 @@ class PrefetchGenerator(threading.Thread):
         if hasattr(self, "stream"):
             with torch.cuda.stream(self.stream):
                 for batch in self.loader:
-                    self.queue.put(batch.compose(self.transform))
+                    self.queue.put(batch.compose(self.transform, device=self.device))
         else:
             for batch in self.loader:
-                self.queue.put(batch.compose(self.transform))
+                self.queue.put(batch.compose(self.transform, device=self.device))
         self.queue.put(None)
 
 

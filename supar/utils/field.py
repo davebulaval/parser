@@ -6,6 +6,7 @@ from collections import Counter
 from typing import Callable, Iterable, List, Optional, Union
 
 import torch
+
 from supar.utils.data import Dataset
 from supar.utils.embed import Embedding
 from supar.utils.fn import pad
@@ -41,7 +42,7 @@ class RawField(object):
     def transform(self, sequences: Iterable[List]) -> Iterable[List]:
         return (self.preprocess(seq) for seq in sequences)
 
-    def compose(self, sequences: Iterable[List]) -> Iterable[List]:
+    def compose(self, sequences: Iterable[List], device: str) -> Iterable[List]:
         return sequences
 
 
@@ -147,10 +148,6 @@ class Field(RawField):
         if hasattr(self, "vocab"):
             return self.vocab[self.eos]
         return self.specials.index(self.eos)
-
-    @property
-    def device(self):
-        return "cuda" if torch.cuda.is_available() else "cpu"
 
     def preprocess(self, data: Union[str, Iterable]) -> Iterable:
         r"""
@@ -259,19 +256,20 @@ class Field(RawField):
                 seq = seq + [self.eos_index]
             yield torch.tensor(seq, dtype=torch.long)
 
-    def compose(self, batch: Iterable[torch.Tensor]) -> torch.Tensor:
+    def compose(self, batch: Iterable[torch.Tensor], device: str) -> torch.Tensor:
         r"""
         Composes a batch of sequences into a padded tensor.
 
         Args:
             batch (Iterable[~torch.Tensor]):
                 A list of tensors.
+            device (str): The device to load the padded data on.
 
         Returns:
             A padded tensor converted to proper device.
         """
 
-        return pad(batch, self.pad_index).to(self.device, non_blocking=True)
+        return pad(batch, self.pad_index).to(device, non_blocking=True)
 
 
 class SubwordField(Field):

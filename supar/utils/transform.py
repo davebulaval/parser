@@ -11,7 +11,7 @@ from typing import Any, Iterable, Optional
 import torch
 from torch.distributions.utils import lazy_property
 
-from supar.utils.logging import get_logger, progress_bar
+from supar.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -81,9 +81,10 @@ class Transform(object):
 
 
 class Batch(object):
-    def __init__(self, sentences: Iterable[Sentence]) -> Batch:
+    def __init__(self, sentences: Iterable[Sentence], device: str = "cuda") -> Batch:
         self.sentences = sentences
         self.names, self.fields = [], {}
+        self.device = device if torch.cuda.is_available() else "cpu"
 
     def __repr__(self):
         return f'{self.__class__.__name__}({", ".join([f"{name}" for name in self.names])})'
@@ -110,10 +111,6 @@ class Batch(object):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
-    @property
-    def device(self):
-        return "cuda" if torch.cuda.is_available() else "cpu"
-
     @lazy_property
     def lens(self):
         return torch.tensor([len(i) for i in self.sentences]).to(
@@ -124,10 +121,12 @@ class Batch(object):
     def mask(self):
         return self.lens.unsqueeze(-1).gt(self.lens.new_tensor(range(self.lens.max())))
 
-    def compose(self, transform: Transform) -> Batch:
+    def compose(self, transform: Transform, device: str) -> Batch:
         for f in transform.flattened_fields:
             self.names.append(f.name)
-            self.fields[f.name] = f.compose([s.fields[f.name] for s in self.sentences])
+            self.fields[f.name] = f.compose(
+                [s.fields[f.name] for s in self.sentences], device=device
+            )
         return self
 
     def shrink(self, batch_size: Optional[int] = None) -> Batch:
