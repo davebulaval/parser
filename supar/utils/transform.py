@@ -111,8 +111,8 @@ class Batch(object):
         self.__dict__.update(state)
 
     @lazy_property
-    def lens(self, device: str = "cuda"):
-        device = device if torch.cuda.is_available() else "cpu"
+    def lens(self):
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         return torch.tensor([len(i) for i in self.sentences]).to(
             device, non_blocking=True
         )
