@@ -38,20 +38,17 @@ class Parser(object):
     NAME = None
     MODEL = None
 
-    def __init__(self, args, model, transform):
+    def __init__(self, args, model, transform, device: str = "cuda"):
         self.args = args
         self.model = model
         self.transform = transform
+        self.device = device if torch.cuda.is_available() else "cpu"
 
     def __repr__(self):
         s = f"{self.__class__.__name__}(\n"
         s += "\n".join(["  " + i for i in str(self.model).split("\n")]) + "\n"
         s += "\n".join(["  " + i for i in str(self.transform).split("\n")]) + "\n)"
         return s
-
-    @property
-    def device(self):
-        return "cuda" if torch.cuda.is_available() else "cpu"
 
     @property
     def sync_grad(self):
@@ -379,8 +376,8 @@ class Parser(object):
         logger.info(f"{metric}")
         logger.info(
             f"{elapsed}s elapsed, "
-            f"{sum(data.sizes)/elapsed.total_seconds():.2f} Tokens/s, "
-            f"{len(data)/elapsed.total_seconds():.2f} Sents/s"
+            f"{sum(data.sizes) / elapsed.total_seconds():.2f} Tokens/s, "
+            f"{len(data) / elapsed.total_seconds():.2f} Sents/s"
         )
 
         return metric
@@ -490,8 +487,8 @@ class Parser(object):
                 dist.barrier()
         logger.info(
             f"{elapsed}s elapsed, "
-            f"{sum(data.sizes)/elapsed.total_seconds():.2f} Tokens/s, "
-            f"{len(data)/elapsed.total_seconds():.2f} Sents/s"
+            f"{sum(data.sizes) / elapsed.total_seconds():.2f} Tokens/s, "
+            f"{len(data) / elapsed.total_seconds():.2f} Sents/s"
         )
 
         if not cache:
