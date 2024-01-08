@@ -81,10 +81,9 @@ class Transform(object):
 
 
 class Batch(object):
-    def __init__(self, sentences: Iterable[Sentence], device: str = "cuda") -> Batch:
+    def __init__(self, sentences: Iterable[Sentence]) -> Batch:
         self.sentences = sentences
         self.names, self.fields = [], {}
-        self.device = device if torch.cuda.is_available() else "cpu"
 
     def __repr__(self):
         return f'{self.__class__.__name__}({", ".join([f"{name}" for name in self.names])})'
@@ -112,9 +111,10 @@ class Batch(object):
         self.__dict__.update(state)
 
     @lazy_property
-    def lens(self):
+    def lens(self, device: str = "cuda"):
+        device = device if torch.cuda.is_available() else "cpu"
         return torch.tensor([len(i) for i in self.sentences]).to(
-            self.device, non_blocking=True
+            device, non_blocking=True
         )
 
     @lazy_property
