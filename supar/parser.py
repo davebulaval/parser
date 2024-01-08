@@ -625,7 +625,7 @@ class Parser(object):
         model.load_pretrained(state["pretrained"])
         model.load_state_dict(state["state_dict"], False)
         transform = state["transform"]
-        parser = cls(args, model, transform)
+        parser = cls(args, model, transform, device=args.device)
         parser.checkpoint_state_dict = (
             state.get("checkpoint_state_dict", None) if checkpoint else None
         )
